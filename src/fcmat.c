@@ -26,6 +26,7 @@
 #include "pcc.h"
 #include "tetracc.h"
 #include "binarize.h"
+#include "stats.h"
 #include "fcmat.h"
 
 /*----------------------------------------------------------------------------
@@ -114,18 +115,6 @@ void fcm_delete (FCMAT *fcm)
     free(fcm->buf[0]);
   free(fcm);
 } /* fcm_delete() */
-
-/*--------------------------------------------------------------------------*/
-
-REAL fisher_r2z(REAL r)           /* Fisher r-to-z transform */
-{
-  if (r >= 1.0)
-    return (REAL) 18.368400284838550;
-  else if (r <= -1.0)
-    return (REAL)-18.368400284838550;
-  else
-    return (REAL)atanh(r);
-} /* fisher_r2z() */
 
 /*--------------------------------------------------------------------------*/
 

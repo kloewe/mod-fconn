@@ -24,6 +24,27 @@
 #define FCM_R2Z   0x10 /* Fisher r-to-z transform */
 #endif
 
+
+#ifdef __AVX__                    /* if AVX instructions available */
+#define INIT_PCC init_avx
+#define PAIR_PCC pair_avx
+#else
+#ifdef __SSE2__                   /* if SSE2 instructions available */
+#define INIT_PCC init_sse2
+#define PAIR_PCC pair_sse2
+#else
+#error "SSE2 not supported!"      /* else it's time to buy a new computer */
+#endif
+#endif
+
+#if defined __POPCNT__ && defined __SSE4_1__
+  #define PCAND_TCC pcand_m128i   /* use m128i implementation */
+  #define BPI 128                 /* 128 bits per integer */
+#else
+  #define PCAND_TCC pcand_lut16   /* use lut16 implemenation */
+  #define BPI 32                  /* 32 bits per integer */
+#endif
+
 /*----------------------------------------------------------------------------
   Type Definitions
 ----------------------------------------------------------------------------*/

@@ -34,6 +34,7 @@
 #define PAIRSPLIT
 #define RECTGRID
 #define SAFETHREAD
+// #define NOWORK
 
 /*----------------------------------------------------------------------
   Data Type Definition / Recursion Handling
@@ -178,6 +179,12 @@ typedef struct {                /* --- thread worker data --- */
   DIM cm;                       /* reference column for mirroring */
   SFXNAME(FCMAT)    *fcm;       /* underlying f.c. matrix object */
   SFXNAME(FCMGETFN) *get;       /* element computation function */
+
+#ifdef FCMAT_MAIN
+  double beg;                   /* start time of thread */
+  double end;                   /* end   time of thread */
+#endif
+
 } SFXNAME(WORK);                /* (thread worker data) */
 
 #ifndef WORKERTYPE              /* if not yet defined */
@@ -189,6 +196,26 @@ typedef void*        WORKER (void*);
 #endif                          /* worker for parallel execution */
 #endif
 
+/*----------------------------------------------------------------------
+  Timer Function
+----------------------------------------------------------------------*/
+#ifdef FCMAT_MAIN
+#ifndef TIMER
+#define TIMER
+
+static double timer (void)
+{                               /* --- get current time */
+  #ifdef _WIN32                 /* if Microsoft Windows system */
+  return 0.001 *(double)timeGetTime();
+  #else                         /* if Linux/Unix system */
+  struct timespec tp;           /* POSIX time specification */
+  clock_gettime(CLOCK_MONOTONIC, &tp);
+  return (double)tp.tv_sec +1e-9 *(double)tp.tv_nsec;
+  #endif                        /* return time in seconds */
+}  /* timer() */
+
+#endif
+#endif
 /*----------------------------------------------------------------------
   Cache Filling Functions
 ----------------------------------------------------------------------*/
@@ -361,6 +388,11 @@ static WORKERDEF(work_trg, p)
   DIM a;                        /* start index for second strip */
 
   assert(p);                    /* check the function argument */
+
+  #ifdef FCMAT_MAIN
+  w->beg = timer();
+  #endif
+
   while (1) {                   /* process two strip parts */
     if (w->ca > w->ra)          /* process rectangle part of strip */
       SFXNAME(rec_rct)(w, w->ra, w->ca, w->ca, w->cb);
@@ -371,6 +403,11 @@ static WORKERDEF(work_trg, p)
     w->cb = w->cm -w->ca;       /* get start and end index */
     w->ca = a;                  /* of the opposite strip */
   }
+
+  #ifdef FCMAT_MAIN
+  w->end = timer();
+  #endif
+
   return THREAD_OK;             /* return a dummy result */
 }  /* work_trg() */
 
@@ -380,7 +417,17 @@ static WORKERDEF(work_rct, p)
 {                               /* --- compute pcc of one strip */
   SFXNAME(WORK) *w = p;         /* type the argument pointer */
   assert(p);                    /* check the function argument */
+
+  #ifdef FCMAT_MAIN
+  w->beg = timer();
+  #endif
+
   SFXNAME(rec_rct)(w, w->ra, w->rb, w->ca, w->cb);
+
+  #ifdef FCMAT_MAIN
+  w->end = timer();
+  #endif
+
   return THREAD_OK;             /* return a dummy result */
 }  /* work_rct() */
 
@@ -393,6 +440,11 @@ static WORKERDEF(work_trg, p)
   DIM a, b, k;                  /* loop variables */
 
   assert(p);                    /* check the function argument */
+
+  #ifdef FCMAT_MAIN
+  w->beg = timer();
+  #endif
+
   while (1) {                   /* process two strip parts */
     SFXNAME(rec_trg)(w, w->ca, w->cb);
     k = w->cb -w->ca;           /* compute leading triangle */
@@ -406,6 +458,11 @@ static WORKERDEF(work_trg, p)
     w->cb = w->cm -w->ca;       /* get start and end index */
     w->ca = a;                  /* of the opposite strip */
   }
+
+  #ifdef FCMAT_MAIN
+  w->end = timer();
+  #endif
+
   return THREAD_OK;             /* return a dummy result */
 }  /* work_trg() */
 
@@ -417,11 +474,21 @@ static WORKERDEF(work_rct, p)
   DIM a, b, k;                  /* loop variables */
 
   assert(p);                    /* check the function argument */
+
+  #ifdef FCMAT_MAIN
+  w->beg = timer();
+  #endif
+
   k = w->rb -w->ra;             /* get the size of the rectangles */
   for (a = w->ca; a < w->cb; a += k) {
     b = (a+k < w->cb) ? a+k : w->cb;
     SFXNAME(rec_rct)(w, w->ra, w->rb, a, b);
   }                             /* split the strip into squares */
+
+  #ifdef FCMAT_MAIN
+  w->end = timer();
+  #endif
+
   return THREAD_OK;             /* return a dummy result */
 }  /* work_rct() */
 
@@ -456,6 +523,14 @@ static int SFXNAME(fcm_fill) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   fcm->ca = col -(col % fcm->tile);
   fcm->cb = fcm->ca +fcm->tile; /* compute the new column range */
   if (fcm->cb > fcm->V) fcm->cb = fcm->V;
+
+  #ifdef FCMAT_MAIN
+  fcm->cnt += 1;
+  #endif
+
+  #ifdef NOWORK
+  if (1) return 0;
+  #endif
 
   w = fcm->work;                /* and the data for the workers */
   if (fcm->ra >= fcm->ca) {     /* if to process a triangle */
@@ -523,16 +598,31 @@ static int SFXNAME(fcm_fill) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
     threads[i] = CreateThread(NULL, 0, worker, w+i, 0, &thid);
     if (!threads[i]) { fcm->err = -1; break; }
   }                             /* create a thread for each strip */
-  WaitForMultipleObjects(i, threads, TRUE, INFINITE);
-  while (--i >= 0)              /* wait for threads to finish, */
+  WaitForMultipleObjects(n, threads, TRUE, INFINITE);
+  for (i = 0; i < n; i++)       /* wait for threads to finish, */
     CloseHandle(threads[i]);    /* then close all thread handles */
   #else                         /* if Linux/Unix system */
   for (i = 0; i < n; i++)       /* traverse the threads */
     if (pthread_create(threads+i, NULL, worker, w+i) != 0) {
       fcm->err = -1; break; }   /* create a thread for each strip */
-  while (--i >= 0)              /* wait for threads to finish */
+  for (i = 0; i < n; i++)       /* wait for threads to finish */
     pthread_join(threads[i], NULL);
   #endif                        /* (join threads with this one) */
+
+  #ifdef FCMAT_MAIN
+  double min = +INFINITY;
+  double max = -INFINITY;
+  for (i = 0; i < n; i++) {
+    if (w[i].beg < min) min = w[i].beg;
+    if (w[i].end > max) max = w[i].end;
+  }
+  fcm->sum += max -min;
+  for (i = 0; i < n; i++) {
+    fcm->beg += w[i].beg -min;
+    fcm->end += max -w[i].end;
+  }
+  #endif
+
   return fcm->err;              /* return the error status */
 }  /* fcm_fill() */
 
@@ -550,9 +640,15 @@ static REAL SFXNAME(fcm_pccotf) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
     return (REAL)+1;            /* always return +1.0 */
   if (row >  col) {             /* ensure col >= row (upper triangle) */
     DIM t = row; row = col; col = t; }
+
+  #ifdef NOWORK
+  r = 0.5;
+  #else
   r = PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
                (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
                (int)fcm->T);    /* compute Pearson correlation coeff. */
+  #endif
+
   return SFXNAME(clamp)(r, (REAL)-1, (REAL)+1); /* clamp to [-1,1] */
 }  /* fcm_pccotf() */
 
@@ -626,6 +722,9 @@ static REAL SFXNAME(fcm_cache) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   &&  (SFXNAME(fcm_fill)(fcm, row, col) != 0)) {
     DIM n = fcm->nthd;          /* if outside cache, fill cache; */
     fcm->nthd = 1;              /* on failure retry with one thread */
+
+    fprintf(stderr, "safethread\n");
+
     SFXNAME(fcm_fill)(fcm, row, col);
     fcm->nthd = n;              /* (a single thread cannot fail) */
   }                             /* and restore the number of threads */
@@ -679,7 +778,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
   fcm->tile  = 0;               /* default: compute on the fly */
   fcm->mode  = mode;            /* note the processing mode */
   fcm->nthd  = proccnt();       /* default: use all processors */
-  fcm->data  = NULL;            /* clear normalized/binarized data, */
+  fcm->mem   = NULL;            /* clear memory block, */
   fcm->cmap  = NULL;            /* cosine map and cache */
   fcm->cache = NULL;            /* for easier cleanup */
   fcm->thrds = NULL;
@@ -690,6 +789,11 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
   fcm->row   = fcm->col = 0;    /* and the coordinates and value */
   fcm->value = fcm->diag;       /* of the current element */
   fcm->err   = 0;               /* clear the error status */
+
+  #ifdef FCMAT_MAIN
+  fcm->sum   = fcm->beg = fcm->end = 0;
+  fcm->cnt   = 0;
+  #endif
 
   va_start(args, mode);         /* start variable arguments */
   if (mode & FCM_CACHE)         /* if to use a cached version */
@@ -715,11 +819,12 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
     fcm->X = (((int)T+3) & ~3); /* process blocks with 4 numbers */
     #endif                      /* get the data block size */
     #endif                      /* allocate memory for norm.ed data */
-    if (posix_memalign(&fcm->data, 32,
-            (size_t)V *(size_t)fcm->X *sizeof(REAL))) {
-      SFXNAME(fcm_delete)(fcm); return NULL; }
-    // fcm->data = malloc((size_t)V*(size_t)fcm->X *sizeof(REAL));
-    // if (!fcm->data) { SFXNAME(fcm_delete)(fcm); return NULL; }
+    //if (posix_memalign(&fcm->data, 32,
+    //        (size_t)V *(size_t)fcm->X *sizeof(REAL))) {
+    //  SFXNAME(fcm_delete)(fcm); return NULL; }
+    fcm->mem = malloc((size_t)V*(size_t)fcm->X *sizeof(REAL) +31);
+    if (!fcm->mem) { SFXNAME(fcm_delete)(fcm); return NULL; }
+    fcm->data = (REAL*)(((ptrdiff_t)fcm->mem +31) & ~31);
     INIT_PCC(data, (int)V, (int)T, fcm->data, (int)fcm->X); }
   else if (mode == FCM_TCC) {   /* if tetrachoric correlation coeff. */
     #if defined __POPCNT__ \
@@ -727,7 +832,8 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
     fcm->X = 4 *(((int)T+127) >> 7);
     #else                       /* otherwise fall back to LUT16 */
     fcm->X = ((int)T+31) >> 5;  /* get block size of binarized data */
-    #endif                      /* allocate memory for binarized data */
+    #endif
+    fcm->mem  =                 /* allocate memory for binarized data */
     fcm->data = SFXNAME(binarize)(data, (int)V, (int)T, BIN_MEDIAN,BPI);
     if (!fcm->data) { SFXNAME(fcm_delete)(fcm); return NULL; };
     fcm->cmap = SFXNAME(make_cmap)((int)T); /* create cosine map */
@@ -766,7 +872,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
       if (g *(fcm->nthd/g) == fcm->nthd)
         break;                  /* compute factors as close as */
     fcm->gc = g;                /* possible to the square root */
-    fcm->gr = fcm->nthd /g;     /* for the rectangle grid */
+    fcm->gr = fcm->nthd/g;      /* for the rectangle grid */
     #endif
     fcm->get  = SFXNAME(fcm_cache);
     fcm->ra = fcm->rb = -1;     /* get element retrieval function and */
@@ -775,6 +881,8 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
     z = (size_t)V *(size_t)(V-1)/2; /* cache for upper triangle */
     fcm->cache = (REAL*)malloc(z *sizeof(REAL));
     if (!fcm->cache) { SFXNAME(fcm_delete)(fcm); return NULL; }
+
+    #ifndef NOWORK
     if (mode == FCM_PCC)        /* if Pearson correlation cofficient */
       #ifdef FORCENAIVE
       SFXNAME(pccx)    (data, fcm->cache, (int)V, (int)T, PCC_NAIVE);
@@ -789,6 +897,8 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
       SFXNAME(tetraccx)(data, fcm->cache, (int)V, (int)T,
                         TCC_AUTO|TCC_THREAD, fcm->nthd);
       #endif
+    #endif
+
     fcm->get = SFXNAME(fcm_full);
     if (fcm->mode & FCM_R2Z)    /* if Fisher's r-to-z transform, */
       for (k = 0; k < z; k++)   /* transform the matrix elements */
@@ -803,11 +913,31 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
 void SFXNAME(fcm_delete) (SFXNAME(FCMAT) *fcm)
 {                               /* --- delete a func. connect. matrix */
   assert(fcm);                  /* check the function argument */
+
+  #ifdef FCMAT_MAIN
+  if (fcm->cnt <= 0) fcm->cnt = 1;
+  double loss = fcm->beg +fcm->end;
+  fprintf(stderr, "fcm_delete()\n");
+  fprintf(stderr, "%d tiles\n", fcm->cnt);
+  fprintf(stderr, "time: %10.6f (%10.6f)\n",
+          fcm->sum, fcm->sum/(double)fcm->cnt);
+  fprintf(stderr, "loss: %10.6f (%10.6f/%10.6f)\n",
+          loss,     loss    /(double)fcm->nthd,
+          loss    /(double)fcm->cnt);
+  fprintf(stderr, "beg : %10.6f (%10.6f/%10.6f)\n",
+          fcm->beg, fcm->beg/(double)fcm->nthd,
+          fcm->beg/(double)fcm->cnt);
+  fprintf(stderr, "end : %10.6f (%10.6f/%10.6f)\n",
+          fcm->end, fcm->end/(double)fcm->nthd,
+          fcm->end/(double)fcm->cnt);
+  #endif
+
   if (fcm->work)  free(fcm->work);
   if (fcm->thrds) free(fcm->thrds);
   if (fcm->cache) free(fcm->cache);
   if (fcm->cmap)  free(fcm->cmap);
-  free(fcm->data);              /* delete cache, cosine map, data, */
+  // free(fcm->data);              /* if posix_memalign() used */
+  free(fcm->mem);               /* delete cache, cosine map, data, */
   free(fcm);                    /* and the base structure */
 } /* fcm_delete() */
 
@@ -886,21 +1016,6 @@ void SFXNAME(fcm_show) (SFXNAME(FCMAT) *fcm)
 #endif
 
 /*--------------------------------------------------------------------*/
-#if 1
-
-static double timer (void)
-{                               /* --- get current time */
-  #ifdef _WIN32                 /* if Microsoft Windows system */
-  return 0.001 *(double)timeGetTime();
-  #else                         /* if Linux/Unix system */
-  struct timespec tp;           /* POSIX time specification */
-  clock_gettime(CLOCK_MONOTONIC, &tp);
-  return (double)tp.tv_sec +1e-9 *(double)tp.tv_nsec;
-  #endif                        /* return time in seconds */
-}  /* timer() */
-
-#endif
-/*--------------------------------------------------------------------*/
 
 int main (int argc, char* argv[])
 {                               /* --- main function for testing */
@@ -931,13 +1046,14 @@ int main (int argc, char* argv[])
     fprintf(stderr, "%s: not enough memory\n", argv[0]); return -1; }
   for (size_t i = 0; i < (size_t)(T*V); i++)
     data[i] = (REAL)(rand()/((double)RAND_MAX+1));
-  
+
   /* --- test correctness --- */
   corr = malloc((size_t)V *(size_t)(V-1)/2 *sizeof(REAL));
   if (!corr) {                  /* compute correlation coefficients */
     fprintf(stderr, "%s: not enough memory\n", argv[0]); return -1; }
   SFXNAME(pccx)(data, corr, (int)V, (int)T, PCC_AUTO); //PCC_NAIVE);
-  
+
+  #ifndef NOWORK
   printf("test #1 ... ");
   fcm = SFXNAME(fcm_create)(data, V, T, FCM_PCC|FCM_CACHE, C);
   if (!fcm) {                   /* create functional connect. matrix */
@@ -956,7 +1072,8 @@ int main (int argc, char* argv[])
     fprintf(stderr, "%s: thread error\n", argv[0]); return -1; }
   printf("%s\n", (diff) ? "[FAILED]" : "[PASSED]");
   SFXNAME(fcm_delete)(fcm);     /* delete the func. connect. matrix */
-  
+  #endif
+
   #if 0
   printf("test #2 ... ");
   fcm = SFXNAME(fcm_create)(data, V, T, FCM_PCC|FCM_CACHE, C);
@@ -975,15 +1092,14 @@ int main (int argc, char* argv[])
   printf("%s\n", (diff) ? "[FAILED]" : "[PASSED]");
   SFXNAME(fcm_delete)(fcm);     /* delete the func. connect. matrix */
   #endif
-          
-  /* --- test perfomance --- */
+
+  /* --- test performance --- */
   int n = 1;
-  
+
   t0 = timer();
   fcm = SFXNAME(fcm_create)(data, V, T, FCM_PCC|FCM_CACHE, C);
   if (!fcm) {                   /* create functional connect. matrix */
     fprintf(stderr, "%s: not enough memory\n", argv[0]); return -1; }
-
   for (t = SFXNAME(fcm_first)(fcm); t > 0; t = SFXNAME(fcm_next)(fcm)) {
     r = SFXNAME(fcm_row)(fcm);  /* traverse the matrix elements */
     c = SFXNAME(fcm_col)(fcm);  /* and get their row and column */
@@ -1006,8 +1122,8 @@ int main (int argc, char* argv[])
   }
   SFXNAME(fcm_delete)(fcm);     /* delete the func. connect. matrix */
   printf("time (fcm_get):  %8.2f\n", (timer()-t0)/(double)n);
-  #endif  
-  
+  #endif
+
   free(corr);                   /* delete correlation coefficients */
   free(data);                   /* delete the data */
   return 0;                     /* return 'ok' */

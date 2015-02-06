@@ -90,6 +90,7 @@ typedef struct SFXNAME(fcmat) { /* --- a func. connectivity matrix */
   int    mode;                  /* processing mode (e.g. FCM_PCC) */
   DIM    nthd;                  /* number of threads for computation */
   void   *data;                 /* normalized/binarized data */
+  void   *mem;                  /* allocated memory block */
   REAL   *cmap;                 /* map from n_11 to cosine values */
   REAL   *cache;                /* cached rectangle/triangle */
   REAL   diag;                  /* value of diagonal element */
@@ -102,6 +103,14 @@ typedef struct SFXNAME(fcmat) { /* --- a func. connectivity matrix */
   THREAD *thrds;                /* thread handles for parallelization */
   void   *work;                 /* data for worker threads */
   SFXNAME(FCMGETFN) *get;       /* element retrieval function */
+
+#ifdef FCMAT_MAIN
+  double  sum;                  /* total thread execution time */
+  double  beg;                  /* loss due to thread start times */
+  double  end;                  /* loss due to thread end   times */
+  int     cnt;                  /* number of times cache filled */
+#endif  
+
 } SFXNAME(FCMAT);               /* (functional connectivity matrix) */
 
 /*----------------------------------------------------------------------

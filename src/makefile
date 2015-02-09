@@ -19,12 +19,12 @@ LIBS       = -lm -lrt -lpthread
 
 HDRS       = $(CPUINFODIR)/cpuinfo.h \
              $(CORRDIR)/clamp.h \
-             $(CORRDIR)/pcc.h \
              $(CORRDIR)/binarize.h \
+             $(CORRDIR)/pcc.h \
              $(CORRDIR)/tetracc.h
 OBJS       = $(CPUINFODIR)/cpuinfo.o \
-             $(CORRDIR)/pcc.o \
              $(CORRDIR)/binarize.o \
+             $(CORRDIR)/pccbnch.o \
              $(CORRDIR)/tetracc.o
 PRGS       = ../bin/fcmat
 
@@ -63,8 +63,14 @@ $(CPUINFODIR)/cpuinfo.o:
 $(CORRDIR)/pcc.o:
 	cd $(CORRDIR); $(MAKE) pcc.o
 
+$(CORRDIR)/pccbnch.o:
+	cd $(CORRDIR); $(MAKE) pccbnch.o
+
 $(CORRDIR)/tetracc.o:
 	cd $(CORRDIR); $(MAKE) tetracc.o
+
+$(CORRDIR)/tccbnch.o:
+	cd $(CORRDIR); $(MAKE) tccbnch.o
 
 $(CORRDIR)/binarize.o:
 	cd $(CORRDIR); $(MAKE) binarize.o

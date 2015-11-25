@@ -23,10 +23,6 @@
 /*----------------------------------------------------------------------
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------*/
-#if defined FCMAT_MAIN && !defined FCM_BENCH
-#define FCM_BENCH               /* include benchmarking code */
-#endif
-
 #ifndef DIM                     /* if matrix dimension is not defined */
 #define DIM ptrdiff_t           /* use ptrdiff_t as the default */
 #endif
@@ -90,38 +86,39 @@ typedef REAL SFXNAME(FCMGETFN) (struct SFXNAME(fcmat) *fcmat,
                                 DIM row, DIM col);
 
 typedef struct SFXNAME(fcmat) { /* --- a func. connectivity matrix */
-  DIM       V;                  /* number of voxels */
-  DIM       T;                  /* number of scans */
-  DIM       X;                  /* size of padded/binarized data */
-  int       mode;               /* processing mode (e.g. FCM_PCC) */
-  DIM       tile;               /* size of tiles/blocks for caching */
-  DIM       nthd;               /* number of threads for computation */
-  void      *data;              /* normalized/binarized data */
-  void      *mem;               /* allocated memory block */
-  REAL      *cmap;              /* map from n_11 to cosine values */
-  REAL      *cache;             /* cached rectangle/triangle */
-  REAL      diag;               /* value of diagonal element */
-  REAL      value;              /* value of current matrix element */
-  DIM       row, col;           /* row and column of current element */
-  DIM       ra, rb;             /* row    range of cached area */
-  DIM       ca, cb;             /* column range of cached area */
-  DIM       gr, gc;             /* rows/columns of grid */
-  int       err;                /* error status */
-  THREAD    *threads;           /* thread handles for parallelization */
-  void      *work;              /* data for worker threads */
+  DIM    V;                     /* number of voxels */
+  DIM    T;                     /* number of scans */
+  DIM    X;                     /* size of padded/binarized data */
+  int    mode;                  /* processing mode (e.g. FCM_PCC) */
+  DIM    tile;                  /* size of tiles/blocks for caching */
+  DIM    nthd;                  /* number of threads for computation */
+  void   *data;                 /* normalized/binarized data */
+  void   *mem;                  /* allocated memory block */
+  REAL   *cmap;                 /* map from n_11 to cosine values */
+  REAL   *cache;                /* cached rectangle/triangle */
+  REAL   diag;                  /* value of diagonal element */
+  REAL   value;                 /* value of current matrix element */
+  DIM    row, col;              /* row and column of current element */
+  DIM    ra, rb;                /* row    range of cached area */
+  DIM    ca, cb;                /* column range of cached area */
+  DIM    gr, gc;                /* rows/columns of grid */
+  int    err;                   /* error status */
+  THREAD *threads;              /* thread handles for parallelization */
+  void   *work;                 /* data for worker threads */
   SFXNAME(FCMGETFN) *get;       /* element retrieval function */
+  SFXNAME(FCMGETFN) *cget;      /* element retrieval function (cache) */
   #ifndef _WIN32                /* not yet available for Windows */
-  int       join;               /* flag for joining threads */
-  int       idle;               /* number of idle threads */
-  MUTEX     mutex;              /* access control variable */
-  TCOND     cond_idle;          /* notify main thread of idle worker */
-  TCOND     cond_work;          /* order threads to start working */
+  int    join;                  /* flag for joining threads */
+  int    idle;                  /* number of idle threads */
+  MUTEX  mutex;                 /* access control variable */
+  TCOND  cond_idle;             /* notify main thread of idle worker */
+  TCOND  cond_work;             /* order threads to start working */
   #endif                        /* (thread signaling/communication) */
   #ifdef FCM_BENCH              /* if to do some benchmarking */
-  int       cnt;                /* number of times cache was filled */
-  double    sum;                /* total thread execution time */
-  double    beg;                /* loss due to thread start times */
-  double    end;                /* loss due to thread end   times */
+  int    cnt;                   /* number of times cache was filled */
+  double sum;                   /* total thread execution time */
+  double beg;                   /* loss due to thread start times */
+  double end;                   /* loss due to thread end   times */
   #endif                        /* (for time loss computation) */
 } SFXNAME(FCMAT);               /* (functional connectivity matrix) */
 

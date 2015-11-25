@@ -11,12 +11,14 @@ CC         = gcc -std=c99 -march=native
 CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion \
              -pedantic $(ADDFLAGS)
 CFLAGS     = $(CFBASE) -DNDEBUG -O3
+#CFLAGS     = $(CFBASE) -O1 -g
 INCS       = -I$(CPUINFODIR) -I$(CORRDIR)
 
 LD         = gcc
 LDFLAGS    =
 LIBS       = -lm -lrt -lpthread
 
+OUTDIR     = ../bin
 HDRS       = $(CPUINFODIR)/cpuinfo.h \
              $(CORRDIR)/clamp.h \
              $(CORRDIR)/binarize.h \
@@ -24,14 +26,19 @@ HDRS       = $(CPUINFODIR)/cpuinfo.h \
              $(CORRDIR)/tetracc.h
 OBJS       = $(CPUINFODIR)/cpuinfo.o \
              $(CORRDIR)/binarize.o \
-             $(CORRDIR)/pccbnch.o \
+             $(CORRDIR)/pcc.o \
              $(CORRDIR)/tetracc.o
-PRGS       = ../bin/fcmat
+PRGS       = $(OUTDIR)/fcmat
 
 #-----------------------------------------------------------------------
 # Build Program
 #-----------------------------------------------------------------------
-all:    $(PRGS)
+all: $(PRGS)
+
+$(PRGS): | $(OUTDIR)
+
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
 
 fcmat:      ../bin/fcmat
 	echo ""

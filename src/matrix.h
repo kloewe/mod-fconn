@@ -3,8 +3,8 @@
   Contents: data type for a square matrix
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------*/
-#ifndef __MATRIX__
-#define __MATRIX__
+#ifndef MATRIX_H
+#define MATRIX_H
 
 /*----------------------------------------------------------------------
   Preprocessor Definitions
@@ -42,4 +42,4 @@ extern void    mat_print  (const MATRIX *mat);
 ----------------------------------------------------------------------*/
 #define mat_dim(m)        ((m)->n)
 
-#endif
+#endif  /* #ifndef MATRIX_H */

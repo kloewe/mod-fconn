@@ -3,7 +3,7 @@
   Contents: data type for functional connectivity matrix
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------*/
-#ifndef __FCMAT__
+#ifndef FCMAT_H
 
 #ifdef _MSC_VER
 #define uint32_t   unsigned __int32
@@ -185,5 +185,6 @@ extern void SFXNAME(fcm_show)   (SFXNAME(FCMAT) *fcm);
 #undef SFXNAME_2
 
 #undef  _FCM_PASS
-#define __FCMAT__
-#endif
+
+#define FCMAT_H
+#endif  /* #ifndef FCMAT_H */

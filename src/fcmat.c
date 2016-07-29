@@ -808,12 +808,9 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
     fcm->X = (((int)T+3) & ~3); /* process blocks with 4 numbers */
     #endif                      /* get the data block size */
     #endif                      /* allocate memory for norm.ed data */
-    //if (posix_memalign(&fcm->data, 32,
-    //        (size_t)V *(size_t)fcm->X *sizeof(REAL))) {
-    //  SFXNAME(fcm_delete)(fcm); return NULL; }
     fcm->mem = malloc((size_t)V*(size_t)fcm->X *sizeof(REAL) +31);
     if (!fcm->mem) { SFXNAME(fcm_delete)(fcm); return NULL; }
-    fcm->data = (REAL*)(((ptrdiff_t)fcm->mem +31) & ~31);
+    fcm->data = (REAL*)(((uintptr_t)fcm->mem +31) & ~(uintptr_t)31);
     INIT_PCC(data, (int)V, (int)T, fcm->data, (int)fcm->X); }
   else if (mode == FCM_TCC) {   /* if tetrachoric correlation coeff. */
     #if defined __POPCNT__ \

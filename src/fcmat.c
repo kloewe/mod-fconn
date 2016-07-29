@@ -1093,7 +1093,7 @@ static int error (int code, ...)
 
 int main (int argc, char* argv[])
 {                               /* --- main function for testing */
-  int     i, k = 0;             /* loop variables, counters */
+  int     k = 0;                /* counter */
   char    *s;                   /* to traverse the options */
   char    **optarg = NULL;      /* option argument */
   DIM     V     = 0;            /* number of voxels */
@@ -1140,7 +1140,7 @@ int main (int argc, char* argv[])
   }                             /* and abort the program */
 
   /* --- evaluate arguments --- */
-  for (i = 1; i < argc; i++) {  /* traverse the arguments */
+  for (int i = 1; i < argc; i++) { /* traverse the arguments */
     s = argv[i];                /* get an option argument */
     if (optarg) { *optarg = s; optarg = NULL; continue; }
     if ((*s == '-') && *++s) {  /* -- if argument is an option */

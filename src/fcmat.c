@@ -895,6 +895,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
       SFXNAME(tetraccx)(data, fcm->cache, (int)V, (int)T,
                         TCC_AUTO|TCC_THREAD, fcm->nthd);
     fcm->cget = SFXNAME(fcm_full);
+    fcm->get  = SFXNAME(fcm_full);
     if (fcm->mode & FCM_R2Z)    /* if Fisher's r-to-z transform, */
       for (k = 0; k < z; k++)   /* transform the matrix elements */
         fcm->cache[k] = SFXNAME(r2z)(fcm->cache[k]);

@@ -24,7 +24,7 @@
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------*/
 #ifndef DIM                     /* if matrix dimension is not defined */
-#define DIM ptrdiff_t           /* use ptrdiff_t as the default */
+#define DIM int                 /* use int as the default */
 #endif
 
 #ifdef REAL                     /* if REAL is defined */

@@ -12,6 +12,16 @@ CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
              -pedantic $(ADDFLAGS)
 CFLAGS     = $(CFBASE) -DNDEBUG -O3
 #CFLAGS     = $(CFBASE) -O1 -g
+
+REAL        ?= float
+DREAL       =
+ifneq "$(strip $(REAL))" ""
+  DREAL       = -DREAL=$(REAL)
+endif
+DEFS        = $(DREAL)
+
+CFLAGS     += $(DEFS)
+
 INCS       = -I$(CPUINFODIR) -I$(CORRDIR)
 
 LD         = gcc
@@ -28,7 +38,7 @@ OBJS       = $(CPUINFODIR)/cpuinfo.o \
              $(CORRDIR)/binarize.o \
              $(CORRDIR)/pcc.o \
              $(CORRDIR)/tetracc.o
-PRGS       = $(OUTDIR)/fcmat
+PRGS       = $(OUTDIR)/test_fcmat
 
 #-----------------------------------------------------------------------------
 # Build Program
@@ -40,25 +50,25 @@ $(PRGS): | $(OUTDIR)
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
 
-fcmat:      ../bin/fcmat
+test_fcmat:  ../bin/test_fcmat
 	
 
-../bin/fcmat:  $(OBJS) fcm_main.o makefile
-	$(LD) $(LDFLAGS) $(OBJS) fcm_main.o $(LIBS) -o $@
+../bin/test_fcmat:  $(OBJS) fcmat.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat.o test_fcmat.o $(LIBS) -o $@
 
 #-----------------------------------------------------------------------------
-# Main Programs
+# Test Programs
 #-----------------------------------------------------------------------------
-fcm_main.o:   fcmat.h $(HDRS)
-fcm_main.o:   fcmat.c makefile
-	$(CC) $(CFLAGS) -funroll-loops $(INCS) -DFCMAT_MAIN -c fcmat.c -o $@
+test_fcmat.o:  fcmat.h $(HDRS)
+test_fcmat.o:  test_fcmat.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c test_fcmat.c -o $@
 
 #-----------------------------------------------------------------------------
 # Main Modules
 #-----------------------------------------------------------------------------
-fcmat.o:    fcmat.h $(HDRS)
-fcmat.o:    fcmat.c makefile
-	$(CC) $(CFLAGS) -funroll-loops $(INCS) -c fcmat.c -o $@
+fcmat.o:  fcmat.h $(HDRS)
+fcmat.o:  fcmat.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c fcmat.c -o $@
 
 #-----------------------------------------------------------------------------
 # External Modules
@@ -67,16 +77,17 @@ $(CPUINFODIR)/cpuinfo.o:
 	cd $(CPUINFODIR); $(MAKE) cpuinfo.o
 
 $(CORRDIR)/pcc.o:
-	cd $(CORRDIR); $(MAKE) pcc.o
+	cd $(CORRDIR); $(MAKE) pcc.o      ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/pccbnch.o:
-	cd $(CORRDIR); $(MAKE) pccbnch.o
+	cd $(CORRDIR); $(MAKE) pccbnch.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/tetracc.o:
-	cd $(CORRDIR); $(MAKE) tetracc.o
+	cd $(CORRDIR); $(MAKE) tetracc.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/tccbnch.o:
-	cd $(CORRDIR); $(MAKE) tccbnch.o
+	cd $(CORRDIR); $(MAKE) tccbnch.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/binarize.o:
-	cd $(CORRDIR); $(MAKE) binarize.o
+	cd $(CORRDIR); $(MAKE) binarize.o ADDFLAGS="$(DREAL)"
+

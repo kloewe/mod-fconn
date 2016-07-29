@@ -8,7 +8,7 @@ CPUINFODIR = ../../cpuinfo/src
 CORRDIR    = ../../corr/src
 
 CC         = gcc -std=c99 -march=native
-CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion \
+CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
              -pedantic $(ADDFLAGS)
 CFLAGS     = $(CFBASE) -DNDEBUG -O3
 #CFLAGS     = $(CFBASE) -O1 -g

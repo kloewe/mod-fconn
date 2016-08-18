@@ -35,11 +35,6 @@
 // #define RECTGRID
 // #define SAFETHREAD
 
-#define PRGNAME     "fcmat"
-#define DESCRIPTION "compute a functional connectivity matrix"
-#define VERSION     "version 1.0 (2015.02.10)         " \
-                    "(c) 2015   Kristian Loewe/Christian Borgelt"
-
 /*----------------------------------------------------------------------
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------*/
@@ -730,8 +725,7 @@ static REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   Functions
 ----------------------------------------------------------------------*/
 
-SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T,
-                                     int mode, ...)
+SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
 {                               /* --- create a func. connect. matrix */
   SFXNAME(FCMAT)    *fcm;       /* func. con. matrix to be created */
   SFXNAME(FCMGETFN) *get;       /* element computation function */
@@ -935,7 +929,6 @@ void SFXNAME(fcm_delete) (SFXNAME(FCMAT) *fcm)
   if (fcm->threads) free(fcm->threads);
   if (fcm->cache)   free(fcm->cache);
   if (fcm->cmap)    free(fcm->cmap);
-  // free(fcm->data);              /* if posix_memalign() used */
   if (fcm->mem)     free(fcm->mem);/* delete cache, cosine map, */
   free(fcm);                    /* data, and the base structure */
 } /* fcm_delete() */

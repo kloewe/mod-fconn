@@ -72,7 +72,7 @@ REAL mat_get (const MATRIX *mat, DIM i, DIM j)
 {                               /* --- get a matrix element */
   size_t k;                     /* linear index */
   size_t l, r, m;               /* index array indices */
-  
+
   if (j == i) return (REAL)NAN; /* diag. elems are not defined */ 
   #if LOWER
   if (j > i)                    /* compute the linear index */
@@ -142,24 +142,24 @@ void mat_print (const MATRIX *mat)
   REAL   x;                     /* matrix element to print */
 
   if (mat->size <= 0) {         /* if full matrix */
-//     for (i = k = 0; i < mat->n; i++) {
-//       #if LOWER
-//       for (j = 0; j < i; j++) { /* traverse rows, then columns */
-// 	      if (j > 0) fputc(' ', stdout);
-//       #else
-//       for (j = i; j < mat->n; j++) {
-// 	      if (j > i) fputc(' ', stdout);
-//       #endif
-// 	      printf("%g", mat->elems[k++]);
-//       }                         /* print the matrix elements */
-//     }
+    // for (i = k = 0; i < mat->n; i++) {
+    //   #if LOWER
+    //   for (j = 0; j < i; j++) { /* traverse rows, then columns */
+    //     if (j > 0) fputc(' ', stdout);
+    //   #else
+    //   for (j = i; j < mat->n; j++) {
+    //     if (j > i) fputc(' ', stdout);
+    //   #endif
+    //   printf("%g", mat->elems[k++]);
+    //   }                         /* print the matrix elements */
+    // }
     printf("\n     ");
-    for (size_t j = 0; j < mat->n; j++)
+    for (j = 0; j < mat->n; j++)
       printf("%-8zu ", j);
     printf("\n");
-    for (size_t i = 0; i < mat->n; i++) {
+    for (i = 0; i < mat->n; i++) {
       printf("%-5zu", i);
-      for (size_t j = 0; j < mat->n; j++) {
+      for (j = 0; j < mat->n; j++) {
         printf("%-8.3g ", mat_get(mat, i, j));
       }
       printf("\n");
@@ -168,14 +168,14 @@ void mat_print (const MATRIX *mat)
     for (i = k = p = 0; i < mat->n; i++) {
       #if LOWER
       for (j = 0; j < i; j++) { /* traverse rows, then columns */
-	      if (j > 0) fputc(' ', stdout);
+        if (j > 0) fputc(' ', stdout);
       #else
       for (j = i; j < mat->n; j++) {
-	      if (j > i) fputc(' ', stdout);
+        if (j > i) fputc(' ', stdout);
       #endif
-	      x = ((p < mat->cnt) && (mat->idxs[p] == k))
-              ? mat->elems[k] : (REAL)NAN;
-	      printf("%g", x); k++;   /* get the matrix elements */
+        x = ((p < mat->cnt) && (mat->idxs[p] == k))
+            ? mat->elems[k] : (REAL)NAN;
+        printf("%g", x); k++;   /* get the matrix elements */
       }                         /* or NAN if it does not exist */
     }                           /* and then print the value */
   }

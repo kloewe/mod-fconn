@@ -1,6 +1,6 @@
 /*----------------------------------------------------------------------
   File    : fcmat.c
-  Contents: data type for functional connectivity matrix
+  Contents: data type for functional connectivity matrix (all in one)
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------*/
 #ifndef _WIN32                  /* if Linux/Unix system */
@@ -24,10 +24,8 @@
 #include "cpuinfo.h"
 #include "binarize.h"
 #include "pcc.h"
-#include "clamp.h"
 #include "tetracc.h"
 #include "fcmat.h"
-// #include "stats.h"
 // #include "mex.h"
 
 /*----------------------------------------------------------------------
@@ -214,10 +212,6 @@ static double timer (void)
   Cache Filling Functions
 ----------------------------------------------------------------------*/
 
-#define clamp   clamp1          /* choose clamping implementation */
-
-/*--------------------------------------------------------------------*/
-
 static inline REAL SFXNAME(r2z) (REAL r)
 {                               /* --- Fisher's r to z transform */
   if (r <= (REAL)-1) return (REAL)-R2Z_MAX;
@@ -229,14 +223,11 @@ static inline REAL SFXNAME(r2z) (REAL r)
 
 static REAL SFXNAME(pcc_pure) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 {                               /* --- compute Pearson corr. coeff. */
-  REAL r;                       /* correlation coefficient */
-
   assert(fcm                    /* check the function arguments */
   &&    (row >= 0) && (row < fcm->V) && (col > row) && (col < fcm->V));
-  r = PAIR_PCC((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
-               (REAL*)fcm->data +(size_t)col *(size_t)fcm->X,
-               (int)fcm->T);    /* compute Pearson correlation coeff. */
-  return SFXNAME(clamp)(r, (REAL)-1, (REAL)+1); /* clamp to [-1,1] */
+  return PAIR_PCC((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
+                  (REAL*)fcm->data +(size_t)col *(size_t)fcm->X,
+                  (int)fcm->T); /* compute Pearson correlation coeff. */
 }  /* pcc_pure() */
 
 /*--------------------------------------------------------------------*/
@@ -626,18 +617,15 @@ static int SFXNAME(fcm_fill) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 
 static REAL SFXNAME(fcm_pccotf) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 {                               /* --- get Pearson cc. on the fly */
-  REAL r;                       /* correlation coefficient */
-
   assert(fcm                    /* check the function arguments */
   &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
   if (row == col)               /* if diagonal element, */
     return (REAL)+1;            /* always return +1.0 */
   if (row >  col) {             /* ensure col >= row (upper triangle) */
     DIM t = row; row = col; col = t; }
-  r = PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
-               (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
-               (int)fcm->T);    /* compute Pearson correlation coeff. */
-  return SFXNAME(clamp)(r, (REAL)-1, (REAL)+1); /* clamp to [-1,1] */
+  return PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
+                  (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
+                  (int)fcm->T); /* compute Pearson correlation coeff. */
 }  /* fcm_pccotf() */
 
 /*--------------------------------------------------------------------*/

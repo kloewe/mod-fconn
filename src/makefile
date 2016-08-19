@@ -6,6 +6,7 @@
 SHELL      = /bin/bash
 CPUINFODIR = ../../cpuinfo/src
 CORRDIR    = ../../corr/src
+STATSDIR    = ../../stats/src
 
 CC         = gcc -std=c99 -march=native
 CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
@@ -22,7 +23,7 @@ DEFS        = $(DREAL)
 
 CFLAGS     += $(DEFS)
 
-INCS       = -I$(CPUINFODIR) -I$(CORRDIR)
+INCS       = -I$(STATSDIR) -I$(CPUINFODIR) -I$(CORRDIR)
 
 LD         = gcc
 LDFLAGS    =
@@ -32,16 +33,18 @@ OUTDIR     = ../bin
 HDRS       = $(CPUINFODIR)/cpuinfo.h \
              $(CORRDIR)/clamp.h \
              $(CORRDIR)/binarize.h \
+             $(STATSDIR)/stats.h \
              $(CORRDIR)/pcc.h \
              $(CORRDIR)/tetracc.h
 OBJS       = $(CPUINFODIR)/cpuinfo.o \
              $(CORRDIR)/binarize.o \
+             $(STATSDIR)/stats.o \
              $(CORRDIR)/pcc.o \
              $(CORRDIR)/tetracc.o
-PRGS       = $(OUTDIR)/test_fcmat
+PRGS       = test_fcmat test_fcmat1
 
 #-----------------------------------------------------------------------------
-# Build Program
+# Build Programs
 #-----------------------------------------------------------------------------
 all: $(PRGS)
 
@@ -50,25 +53,37 @@ $(PRGS): | $(OUTDIR)
 $(OUTDIR):
 	mkdir -p $(OUTDIR)
 
+# all-in-one
 test_fcmat:  ../bin/test_fcmat
 	
-
+# on-demand
+test_fcmat1: ../bin/test_fcmat1
+	
+# all-in-one
 ../bin/test_fcmat:  $(OBJS) fcmat.o test_fcmat.o makefile
 	$(LD) $(LDFLAGS) $(OBJS) fcmat.o test_fcmat.o $(LIBS) -o $@
 
+# on-demand
+../bin/test_fcmat1: $(OBJS) fcmat1.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat1.o test_fcmat.o $(LIBS) -o $@
+
 #-----------------------------------------------------------------------------
-# Test Programs
+# Test Program
 #-----------------------------------------------------------------------------
 test_fcmat.o:  fcmat.h $(HDRS)
 test_fcmat.o:  test_fcmat.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c test_fcmat.c -o $@
 
 #-----------------------------------------------------------------------------
-# Main Modules
+# Modules
 #-----------------------------------------------------------------------------
-fcmat.o:  fcmat.h $(HDRS)
+fcmat.o:  fcmat.h fcmat1.h $(HDRS)
 fcmat.o:  fcmat.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat.c -o $@
+
+fcmat1.o:     fcmat.h fcmat1.h $(HDRS)
+fcmat1.o:     fcmat1.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c fcmat1.c -o $@
 
 #-----------------------------------------------------------------------------
 # External Modules
@@ -77,17 +92,19 @@ $(CPUINFODIR)/cpuinfo.o:
 	cd $(CPUINFODIR); $(MAKE) cpuinfo.o
 
 $(CORRDIR)/pcc.o:
-	cd $(CORRDIR); $(MAKE) pcc.o      ADDFLAGS="$(DREAL)"
+	cd $(CORRDIR);    $(MAKE) pcc.o      ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/pccbnch.o:
-	cd $(CORRDIR); $(MAKE) pccbnch.o  ADDFLAGS="$(DREAL)"
+	cd $(CORRDIR);    $(MAKE) pccbnch.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/tetracc.o:
-	cd $(CORRDIR); $(MAKE) tetracc.o  ADDFLAGS="$(DREAL)"
+	cd $(CORRDIR);    $(MAKE) tetracc.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/tccbnch.o:
-	cd $(CORRDIR); $(MAKE) tccbnch.o  ADDFLAGS="$(DREAL)"
+	cd $(CORRDIR);    $(MAKE) tccbnch.o  ADDFLAGS="$(DREAL)"
 
 $(CORRDIR)/binarize.o:
-	cd $(CORRDIR); $(MAKE) binarize.o ADDFLAGS="$(DREAL)"
+	cd $(CORRDIR);    $(MAKE) binarize.o ADDFLAGS="$(DREAL)"
 
+$(STATSDIR)/stats.o:
+	cd $(STATSDIR);   $(MAKE) stats.o    ADDFLAGS="$(DREAL)"

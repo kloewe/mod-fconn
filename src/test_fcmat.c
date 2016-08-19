@@ -32,7 +32,7 @@
 ----------------------------------------------------------------------*/
 #define PRGNAME     "test_fcmat"
 #define DESCRIPTION "test functional connectivity matrix implementation"
-#define VERSION     "v20160727         " \
+#define VERSION     "v20160819         " \
                     "(c) 2014-2016   Kristian Loewe/Christian Borgelt"
 
 /*--------------------------------------------------------------------*/

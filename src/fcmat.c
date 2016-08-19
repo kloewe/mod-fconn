@@ -25,7 +25,7 @@
 #include "binarize.h"
 #include "pcc.h"
 #include "tetracc.h"
-#include "fcmat.h"
+#include "fcmat1.h"
 // #include "mex.h"
 
 /*----------------------------------------------------------------------
@@ -184,6 +184,14 @@ typedef DWORD WINAPI WORKER (LPVOID);
 typedef void*        WORKER (void*);
 #endif                          /* worker for parallel execution */
 #endif
+
+/*----------------------------------------------------------------------
+  Function Prototypes (on-demand functions defined in fcmat1.h)
+----------------------------------------------------------------------*/
+extern REAL fcm_pccotf (FCMAT *fcm, DIM row, DIM col);
+extern REAL fcm_pccr2z (FCMAT *fcm, DIM row, DIM col);
+extern REAL fcm_tccotf (FCMAT *fcm, DIM row, DIM col);
+extern REAL fcm_tccr2z (FCMAT *fcm, DIM row, DIM col);
 
 /*----------------------------------------------------------------------
   Timer Function
@@ -609,75 +617,6 @@ static int SFXNAME(fcm_fill) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 /*----------------------------------------------------------------------
   Retrieval Functions
 ----------------------------------------------------------------------*/
-
-static REAL SFXNAME(fcm_pccotf) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
-{                               /* --- get Pearson cc. on the fly */
-  assert(fcm                    /* check the function arguments */
-  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
-  if (row == col)               /* if diagonal element, */
-    return (REAL)+1;            /* always return +1.0 */
-  if (row >  col) {             /* ensure col >= row (upper triangle) */
-    DIM t = row; row = col; col = t; }
-  return PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
-                  (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
-                  (int)fcm->T); /* compute Pearson correlation coeff. */
-}  /* fcm_pccotf() */
-
-/*--------------------------------------------------------------------*/
-
-static REAL SFXNAME(fcm_pccr2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
-{                               /* --- get Pearson cc. on the fly */
-  REAL r;                       /* correlation coefficient */
-
-  assert(fcm                    /* check the function arguments */
-  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
-  if (row == col)               /* if diagonal element, */
-    return (REAL)+R2Z_MAX;      /* return atanh(1-epsilon) */
-  if (row > col) {              /* ensure col >= row (upper triangle) */
-    DIM t = row; row = col; col = t; }
-  r = PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
-               (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
-               (int)fcm->T);    /* compute Pearson correlation coeff. */
-  return SFXNAME(r2z)(r);       /* apply Fisher's r to z transform */
-}  /* fcm_pccr2z() */
-
-/*--------------------------------------------------------------------*/
-
-static REAL SFXNAME(fcm_tccotf) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
-{                               /* --- get tetrachoric cc. on the fly */
-  int n;                        /* number of 11 configurations */
-
-  assert(fcm                    /* check the function arguments */
-  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
-  if (row == col)               /* if diagonal element, */
-    return (REAL)+1.0;          /* always return +1.0 */
-  if (row > col) {              /* ensure col >= row (upper triangle) */
-    DIM t = row; row = col; col = t; }
-  n = PCAND_TCC((uint32_t*)fcm->data +(size_t)row*(size_t)fcm->X,
-                (uint32_t*)fcm->data +(size_t)col*(size_t)fcm->X,
-                (int)fcm->X);   /* count number of 11 configs. and */
-  return fcm->cmap[n];          /* compute tetrachoric corr. coeff. */
-}  /* fcm_tccotf() */
-
-/*--------------------------------------------------------------------*/
-
-static REAL SFXNAME(fcm_tccr2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
-{                               /* --- get tetrachoric cc. on the fly */
-  int n;                        /* number of 11 configurations */
-
-  assert(fcm                    /* check the function arguments */
-  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
-  if (row == col)               /* if diagonal element, */
-    return (REAL)+R2Z_MAX;      /* return atanh(1-epsilon) */
-  if (row > col) {              /* ensure col >= row (upper triangle) */
-    DIM t = row; row = col; col = t; }
-  n = PCAND_TCC((uint32_t*)fcm->data +(size_t)row*(size_t)fcm->X,
-                (uint32_t*)fcm->data +(size_t)col*(size_t)fcm->X,
-                (int)fcm->X);   /* compute tetrachoric corr. coeff. */
-  return SFXNAME(r2z)(fcm->cmap[n]);
-}  /* fcm_tccr2z() */           /* apply Fisher's r to z transform */
-
-/*--------------------------------------------------------------------*/
 
 static REAL SFXNAME(fcm_cache) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 {                               /* --- get cached correlation coeff. */

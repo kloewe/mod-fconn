@@ -111,31 +111,6 @@
 #endif                          /* to ensure proper expansion */
 
 /*----------------------------------------------------------------------------
-  Preprocessor Definitions
-----------------------------------------------------------------------------*/
-#if   defined __AVX__           /* if AVX instructions available */
-#  define INIT_PCC SFXNAME(init_avx)
-#  define PAIR_PCC SFXNAME(pair_avx)
-#elif defined __SSE2__          /* if SSE2 instructions available */
-#  define INIT_PCC SFXNAME(init_sse2)
-#  define PAIR_PCC SFXNAME(pair_sse2)
-#else                           /* if neither extension available */
-#  define INIT_PCC SFXNAME(init_naive)
-#  define PAIR_PCC SFXNAME(pair_naive)
-#endif                          /* fall back to naive computations */
-
-#if defined __POPCNT__ && defined __SSE4_1__
-#  define PCAND_TCC pcand_m128i /* use m128i implementation */
-#  define BPI       128         /* 128 bits per integer */
-#else
-#  define PCAND_TCC pcand_lut16 /* use lut16 implemenation */
-#  define BPI       32          /* 32 bits per integer */
-#endif
-
-#define INDEX(i,j,N)    ((size_t)(i)*((size_t)(N)+(size_t)(N) \
-                        -(size_t)(i)-3)/2-1+(size_t)(j))
-
-/*----------------------------------------------------------------------------
   Function Prototypes
 ----------------------------------------------------------------------------*/
 extern REAL SFXNAME(fcm_pccotf) (FCMAT *fcm, DIM row, DIM col);

@@ -26,6 +26,7 @@
 #include "pcc.h"
 #include "tetracc.h"
 #include "fcmat1.h"
+#include "fcmat3.h"
 // #include "mex.h"
 
 /*----------------------------------------------------------------------
@@ -192,6 +193,11 @@ extern REAL fcm_pccotf (FCMAT *fcm, DIM row, DIM col);
 extern REAL fcm_pccr2z (FCMAT *fcm, DIM row, DIM col);
 extern REAL fcm_tccotf (FCMAT *fcm, DIM row, DIM col);
 extern REAL fcm_tccr2z (FCMAT *fcm, DIM row, DIM col);
+
+/*----------------------------------------------------------------------------
+  Function Prototypes (half-stored functions defined in fcmat3.h)
+----------------------------------------------------------------------------*/
+extern REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 
 /*----------------------------------------------------------------------
   Timer Function
@@ -646,19 +652,6 @@ static REAL SFXNAME(fcm_cache) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   col -= fcm->ca;               /* and retrieve correlation coeff. */
   return fcm->cache[(size_t)row *(size_t)fcm->tile +(size_t)col];
 }  /* fcm_cache() */
-
-/*--------------------------------------------------------------------*/
-
-static REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
-{                               /* --- get corr.c. from full rep. */
-  assert(fcm                    /* check the function arguments */
-  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
-  if (row == col)               /* if diagonal element, */
-    return fcm->diag;           /* return a fixed value */
-  return fcm->cache[(row > col) /* retrieve the correlation coeff. */
-                    ? INDEX(col, row, fcm->V)
-                    : INDEX(row, col, fcm->V)];
-}  /* fcm_full() */
 
 /*----------------------------------------------------------------------
   Functions

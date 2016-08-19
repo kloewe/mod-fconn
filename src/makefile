@@ -41,7 +41,7 @@ OBJS       = $(CPUINFODIR)/cpuinfo.o \
              $(STATSDIR)/stats.o \
              $(CORRDIR)/pcc.o \
              $(CORRDIR)/tetracc.o
-PRGS       = test_fcmat test_fcmat1
+PRGS       = test_fcmat test_fcmat1 test_fcmat3
 
 #-----------------------------------------------------------------------------
 # Build Programs
@@ -56,9 +56,15 @@ $(OUTDIR):
 # all-in-one
 test_fcmat:  ../bin/test_fcmat
 	
+
 # on-demand
 test_fcmat1: ../bin/test_fcmat1
 	
+
+# half-stored
+test_fcmat3: ../bin/test_fcmat3
+	
+
 # all-in-one
 ../bin/test_fcmat:  $(OBJS) fcmat.o test_fcmat.o makefile
 	$(LD) $(LDFLAGS) $(OBJS) fcmat.o test_fcmat.o $(LIBS) -o $@
@@ -66,6 +72,10 @@ test_fcmat1: ../bin/test_fcmat1
 # on-demand
 ../bin/test_fcmat1: $(OBJS) fcmat1.o test_fcmat.o makefile
 	$(LD) $(LDFLAGS) $(OBJS) fcmat1.o test_fcmat.o $(LIBS) -o $@
+
+# half-stored
+../bin/test_fcmat3: $(OBJS) fcmat3.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat3.o test_fcmat.o $(LIBS) -o $@
 
 #-----------------------------------------------------------------------------
 # Test Program
@@ -77,13 +87,17 @@ test_fcmat.o:  test_fcmat.c makefile
 #-----------------------------------------------------------------------------
 # Modules
 #-----------------------------------------------------------------------------
-fcmat.o:  fcmat.h fcmat1.h $(HDRS)
+fcmat.o:  fcmat.h fcmat1.h fcmat3.h $(HDRS)
 fcmat.o:  fcmat.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat.c -o $@
 
 fcmat1.o:     fcmat.h fcmat1.h $(HDRS)
 fcmat1.o:     fcmat1.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat1.c -o $@
+
+fcmat3.o:     fcmat.h fcmat3.h $(HDRS)
+fcmat3.o:     fcmat3.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c fcmat3.c -o $@
 
 #-----------------------------------------------------------------------------
 # External Modules

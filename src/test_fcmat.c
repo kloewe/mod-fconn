@@ -33,7 +33,7 @@
 ----------------------------------------------------------------------*/
 #define PRGNAME     "test_fcmat"
 #define DESCRIPTION "test functional connectivity matrix implementation"
-#define VERSION     "v20160819         " \
+#define VERSION     "v20160823         " \
                     "(c) 2014-2016   Kristian Loewe/Christian Borgelt"
 
 /*--------------------------------------------------------------------*/
@@ -279,21 +279,21 @@ int main (int argc, char* argv[])
 
     fprintf(stderr, "test (fcm_next) ... ");
     fcm = fcm_create(data, V, T, mode, P, C);
-    if (!fcm) error(E_NOMEM); /* create functional connect. matrix */
-    diff = 0;                 /* initialize the difference flag */
+    if (!fcm) error(E_NOMEM);   /* create functional connect. matrix */
+    diff = 0;                   /* initialize the difference flag */
     for (t = fcm_first(fcm); t > 0; t = fcm_next(fcm)) {
-      r = fcm_row(fcm); /* traverse the matrix elements */
-      c = fcm_col(fcm); /* and get their row and column */
+      r = fcm_row(fcm);         /* traverse the matrix elements */
+      c = fcm_col(fcm);         /* and get their row and column */
       a = fcm_value(fcm);
-      b = corr[INDEX(r,c,V)]; /* get correlation coefficients */
-      if (a == b) continue;   /* and compare them */
+      b = corr[INDEX(r,c,V)];   /* get correlation coefficients */
+      if (a == b) continue;     /* and compare them */
       if (!diff) fprintf(stderr, "\n");
       fprintf(stderr, "%6"DIM_FMT" %6"DIM_FMT, r, c);
       fprintf(stderr, ": % 18.16f % 18.16f\n", a, b);
-      diff += 1;              /* print any difference and */
-    }                         /* count the number of differences */
-    if (t < 0) error(E_THREAD);  /* check for a computation error */
-    fcm_delete(fcm); /* delete the func. connect. matrix */
+      diff += 1;                /* print any difference and */
+    }                           /* count the number of differences */
+    if (t < 0) error(E_THREAD); /* check for a computation error */
+    fcm_delete(fcm);            /* delete the func. connect. matrix */
     if (diff) fprintf(stderr, "failed [%d].\n", diff);
     else      fprintf(stderr, "passed.\n");
 
@@ -309,7 +309,7 @@ int main (int argc, char* argv[])
     for (DIM i = 0; i < fcm_dim(fcm); i++)
       for (DIM j = i+1; j < fcm_dim(fcm); j++)
         a = fcm_get(fcm,i,j);
-    fcm_delete(fcm);   /* delete the func. connect. matrix */
+    fcm_delete(fcm);            /* delete the func. connect. matrix */
     t0 = (timer()-t0)/(double)n;
     fprintf(stderr, "done.\n");
     fprintf(stderr, "time:   %8.2fs\n", t0);
@@ -318,18 +318,38 @@ int main (int argc, char* argv[])
     fprintf(stderr, "perf (fcm_next) ... ");
     t0 = timer();               /* start the timer */
     fcm = fcm_create(data, V, T, mode, P, C);
-    if (!fcm) error(E_NOMEM); /* create functional connect. matrix */
+    if (!fcm) error(E_NOMEM);   /* create functional connect. matrix */
     for (t = fcm_first(fcm); t > 0; t = fcm_next(fcm)) {
-      r = fcm_row(fcm);  /* traverse the matrix elements */
-      c = fcm_col(fcm);  /* and get their row and column */
+      r = fcm_row(fcm);         /* traverse the matrix elements */
+      c = fcm_col(fcm);         /* and get their row and column */
       a = fcm_value(fcm);
-    }                         /* get the matrix elements */
-    if (t < 0) error(E_THREAD);  /* check for a computation error */
-    fcm_delete(fcm); /* delete the func. connect. matrix */
+    }                           /* get the matrix elements */
+    if (t < 0) error(E_THREAD); /* check for a computation error */
+    fcm_delete(fcm);            /* delete the func. connect. matrix */
     t0 = (timer()-t0)/(double)n;
     fprintf(stderr, "done.\n");
     fprintf(stderr, "time:   %8.2fs\n", t0);
     fprintf(stderr, "Mccf/s: %8.2f\n", (double)E/t0/1e6);
+
+    fprintf(stderr, "perf (nodedeg) ... ");
+    REAL thr = 0.01f;
+    printf("\nthr = %f\n", thr);
+    for (int i = 0; i < 5; i++) {
+      printf("p: %d\n", i);
+      t0 = timer();             /* start the timer */
+      fcm = fcm_create(data, V, T, mode, P, C);
+      if (!fcm) error(E_NOMEM);
+      DIM *intres = malloc((size_t)V* sizeof(DIM));
+      if (!intres) error(E_NOMEM);
+      int rc = fcm_nodedeg(fcm, thr, intres, FCM_THREAD, i);
+      if (rc) error(1, "error (fcm_nodedeg)");
+      free(intres);
+      fcm_delete(fcm);
+      t0 = (timer()-t0)/(double)n;
+      fprintf(stderr, "done.\n");
+      fprintf(stderr, "time:   %8.2fs\n", t0);
+      fprintf(stderr, "Mccf/s: %8.2f\n", (double)E/t0/1e6);
+    }
   }
 
   free(data);                   /* delete the generated data */

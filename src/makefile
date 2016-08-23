@@ -71,46 +71,50 @@ test_fcmat3: ../bin/test_fcmat3
 	
 
 # all-in-one
-../bin/test_fcmat:  $(OBJS) fcmat.o test_fcmat.o makefile
-	$(LD) $(LDFLAGS) $(OBJS) fcmat.o test_fcmat.o $(LIBS) -o $@
+../bin/test_fcmat:  $(OBJS) fcmat.o nodedeg.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat.o nodedeg.o test_fcmat.o $(LIBS) -o $@
 
 # on-demand
-../bin/test_fcmat1: $(OBJS) fcmat1.o test_fcmat.o makefile
-	$(LD) $(LDFLAGS) $(OBJS) fcmat1.o test_fcmat.o $(LIBS) -o $@
+../bin/test_fcmat1: $(OBJS) fcmat1.o nodedeg.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat1.o nodedeg.o test_fcmat.o $(LIBS) -o $@
 
 # cache-based
-../bin/test_fcmat2: $(OBJS) fcmat2.o test_fcmat.o makefile
-	$(LD) $(LDFLAGS) $(OBJS) fcmat2.o test_fcmat.o $(LIBS) -o $@
+../bin/test_fcmat2: $(OBJS) fcmat2.o nodedeg.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat2.o nodedeg.o test_fcmat.o $(LIBS) -o $@
 
 # half-stored
-../bin/test_fcmat3: $(OBJS) fcmat3.o test_fcmat.o makefile
-	$(LD) $(LDFLAGS) $(OBJS) fcmat3.o test_fcmat.o $(LIBS) -o $@
+../bin/test_fcmat3: $(OBJS) fcmat3.o nodedeg.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat3.o nodedeg.o test_fcmat.o $(LIBS) -o $@
 
 #-----------------------------------------------------------------------------
 # Test Program
 #-----------------------------------------------------------------------------
-test_fcmat.o:  fcmat.h $(HDRS)
+test_fcmat.o:  fcmat.h nodedeg.h $(HDRS)
 test_fcmat.o:  test_fcmat.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c test_fcmat.c -o $@
 
 #-----------------------------------------------------------------------------
 # Modules
 #-----------------------------------------------------------------------------
-fcmat.o:  fcmat.h fcmat1.h fcmat3.h $(HDRS)
-fcmat.o:  fcmat.c makefile
+fcmat.o:      fcmat.h fcmat1.h fcmat2.h fcmat3.h $(HDRS)
+fcmat.o:      fcmat.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat.c -o $@
 
 fcmat1.o:     fcmat.h fcmat1.h $(HDRS)
 fcmat1.o:     fcmat1.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat1.c -o $@
 
-fcmat2.o:     fcmat.h $(HDRS)
+fcmat2.o:     fcmat.h fcmat2.h $(HDRS)
 fcmat2.o:     fcmat2.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat2.c -o $@
 
 fcmat3.o:     fcmat.h fcmat3.h $(HDRS)
 fcmat3.o:     fcmat3.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat3.c -o $@
+
+nodedeg.o:    nodedeg.h fcmat.h $(HDRS)
+nodedeg.o:    nodedeg.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c nodedeg.c -o $@
 
 #-----------------------------------------------------------------------------
 # External Modules

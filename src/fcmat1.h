@@ -7,16 +7,13 @@
 
 #include "stats.h"
 #include "pcc.h"
+#include "binarize.h"
 #include "tetracc.h"
 #include "fcmat.h"
 
 /*----------------------------------------------------------------------------
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------------*/
-#ifndef DIM                     /* if matrix dimension is not defined */
-#define DIM int                 /* use int as the default */
-#endif
-
 #ifdef REAL                     /* if REAL is defined */
 #  undef  _FCM_PASS             /* ensure _FCM_PASS is undefined */
 #  define _FCM_PASS 0           /* define macro for single pass */
@@ -35,13 +32,52 @@
 #  define SUFFIX    _dbl        /* function name suffix is '_dbl' */
 #endif
 
-/*--------------------------------------------------------------------------*/
-
 #ifndef SFXNAME                 /* macros to generate function names */
 #define SFXNAME(n)      SFXNAME_1(n,SUFFIX)
 #define SFXNAME_1(n,s)  SFXNAME_2(n,s)
 #define SFXNAME_2(n,s)  n##s    /* the two step recursion is needed */
 #endif                          /* to ensure proper expansion */
+
+/*--------------------------------------------------------------------------*/
+#define int         1           /* to check definitions */
+#define long        2           /* for certain types */
+#define ptrdiff_t   3
+
+#if   DIM == int
+#ifndef DIM_FMT
+#define DIM_FMT     "d"         /* printf format code for int */
+#endif
+#ifndef strtodim
+#define strtodim(s,p)   (int)strtol(s,p,0)
+#endif
+
+#elif DIM == long
+#ifndef DIM_FMT
+#define DIM_FMT     "ld"        /* printf format code for long */
+#endif
+#ifndef strtodim
+#define strtodim(s,p)   strtol(s,p,0)
+#endif
+
+#elif DIM == ptrdiff_t
+#ifndef DIM_FMT
+#  ifdef _MSC_VER
+#  define DIM_FMT   "Id"        /* printf format code for ptrdiff_t */
+#  else
+#  define DIM_FMT   "td"        /* printf format code for ptrdiff_t */
+#  endif                        /* MSC still does not support C99 */
+#endif
+#ifndef strtodim
+#define strtodim(s,p)   (ptrdiff_t)strtoll(s,p,0)
+#endif
+
+#else
+#error "DIM must be either 'int', 'long', or 'ptrdiff_t'"
+#endif
+
+#undef int                      /* remove preprocessor definitions */
+#undef long                     /* needed for the type checking */
+#undef ptrdiff_t
 
 /*----------------------------------------------------------------------------
   Preprocessor Definitions
@@ -130,6 +166,60 @@ inline REAL SFXNAME(fcm_tccr2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   return fisher_r2z(fcm->cmap[n]);
 }  /* fcm_tccr2z() */           /* apply Fisher's r to z transform */
 
+/*----------------------------------------------------------------------------
+  Inline Iteration Functions
+----------------------------------------------------------------------------*/
+
+inline int SFXNAME(fcm_first) (SFXNAME(FCMAT) *fcm)
+{                               /* --- get first matrix element */
+  assert(fcm);                  /* check the function argument */
+  fcm->err = 0;                 /* clear the error status */
+  fcm->row = 0; fcm->col = 1;   /* start with first off-diag. element */
+  fcm->value = fcm->cget(fcm, 0, 1);
+  return (fcm->err) ? -1 : +1;  /* store the value and return status */
+}  /* fcm_first() */
+
+/*--------------------------------------------------------------------------*/
+
+inline int SFXNAME(fcm_next) (SFXNAME(FCMAT) *fcm)
+{                               /* --- get next matrix element */
+  assert(fcm);                  /* check the function argument */
+  if (fcm->col >= fcm->V)       /* if traversal is already finished, */
+    return 0;                   /* abort the function with failure */
+  fcm->col += 1;                /* go to the next column */
+  if (fcm->col >= fcm->cb) {    /* if at the end of a cache row, */
+    fcm->col  = fcm->ca;        /* return to the start of a row */
+    fcm->row += 1;              /* and go to the next row */
+    if (fcm->col <= fcm->row)   /* if in the lower triangle, */
+      fcm->col = fcm->row+1;    /* go to the upper triangle */
+    if (fcm->col >= fcm->cb) {  /* if at the end of a strip */
+      fcm->row = 0;             /* start a new strip */
+      fcm->col = fcm->cb;       /* (row 0, first column after strip) */
+      if (fcm->col >= fcm->V) return 0;
+    }                           /* if whole matrix is traversed, */
+  }                             /* abort the function with failure */
+  fcm->value = fcm->cget(fcm, fcm->row, fcm->col);
+  return (fcm->err) ? -1 : +1;  /* store the value and return status */
+}  /* fcm_next() */
+
+/*----------------------------------------------------------------------------
+  Functions
+----------------------------------------------------------------------------*/
+
+void SFXNAME(fcm_show) (SFXNAME(FCMAT) *fcm)
+{                               /* --- show funct. connect. matrix */
+  assert(fcm);                  /* check the function argument */
+  printf("     ");              /* start the matrix output */
+  for (DIM col = 0; col < fcm->V; col++)
+    printf(" %-8"DIM_FMT, col); /* print the header line */
+  printf("\n");                 /* (column indices) */
+  for (DIM row = 0; row < fcm->V; row++) {
+    printf("%-5"DIM_FMT, row);  /* print the row index */
+    for (DIM col = 0; col < fcm->V; col++)
+      printf(" %-8.3g", SFXNAME(fcm_get)(fcm, row, col));
+    printf("\n");               /* traverse the matrix rows */
+  }                             /* print the matrix elements */
+}  /* fcm_show() */
 
 /*----------------------------------------------------------------------------
   Recursion Handling

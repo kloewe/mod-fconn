@@ -5,18 +5,11 @@
 ----------------------------------------------------------------------------*/
 #ifndef FCMAT3_H
 
-#include "stats.h"
-#include "pcc.h"
-#include "tetracc.h"
-#include "fcmat.h"
+#include "fcmat1.h"
 
 /*----------------------------------------------------------------------------
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------------*/
-#ifndef DIM                     /* if matrix dimension is not defined */
-#define DIM int                 /* use int as the default */
-#endif
-
 #ifdef REAL                     /* if REAL is defined */
 #  undef  _FCM_PASS             /* ensure _FCM_PASS is undefined */
 #  define _FCM_PASS 0           /* define macro for single pass */
@@ -35,8 +28,6 @@
 #  define SUFFIX    _dbl        /* function name suffix is '_dbl' */
 #endif
 
-/*--------------------------------------------------------------------------*/
-
 #ifndef SFXNAME                 /* macros to generate function names */
 #define SFXNAME(n)      SFXNAME_1(n,SUFFIX)
 #define SFXNAME_1(n,s)  SFXNAME_2(n,s)
@@ -46,22 +37,6 @@
 /*----------------------------------------------------------------------------
   Preprocessor Definitions
 ----------------------------------------------------------------------------*/
-#if   defined __AVX__           /* if AVX instructions available */
-#  define INIT_PCC SFXNAME(init_avx)
-#elif defined __SSE2__          /* if SSE2 instructions available */
-#  define INIT_PCC SFXNAME(init_sse2)
-#else                           /* if neither extension available */
-#  define INIT_PCC SFXNAME(init_naive)
-#endif                          /* fall back to naive computations */
-
-#if defined __POPCNT__ && defined __SSE4_1__
-// #  define PCAND_TCC pcand_m128i /* use m128i implementation */
-#  define BPI       128         /* 128 bits per integer */
-#else
-// #  define PCAND_TCC pcand_lut16 /* use lut16 implemenation */
-#  define BPI       32          /* 32 bits per integer */
-#endif
-
 #define INDEX(i,j,N)    ((size_t)(i)*((size_t)(N)+(size_t)(N) \
                          -(size_t)(i)-3)/2-1+(size_t)(j))
 

@@ -12,6 +12,7 @@ CC         = gcc -std=c99 -march=native
 CFBASE     = -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
              -pedantic $(ADDFLAGS)
 CFLAGS     = $(CFBASE) -DNDEBUG -O3
+#CFLAGS     = $(CFBASE) -O3
 #CFLAGS     = $(CFBASE) -O1 -g
 
 REAL        ?= float
@@ -41,7 +42,7 @@ OBJS       = $(CPUINFODIR)/cpuinfo.o \
              $(STATSDIR)/stats.o \
              $(CORRDIR)/pcc.o \
              $(CORRDIR)/tetracc.o
-PRGS       = test_fcmat test_fcmat1 test_fcmat3
+PRGS       = test_fcmat test_fcmat1 test_fcmat2 test_fcmat3
 
 #-----------------------------------------------------------------------------
 # Build Programs
@@ -61,6 +62,10 @@ test_fcmat:  ../bin/test_fcmat
 test_fcmat1: ../bin/test_fcmat1
 	
 
+# cache-based
+test_fcmat2: ../bin/test_fcmat2
+	
+
 # half-stored
 test_fcmat3: ../bin/test_fcmat3
 	
@@ -72,6 +77,10 @@ test_fcmat3: ../bin/test_fcmat3
 # on-demand
 ../bin/test_fcmat1: $(OBJS) fcmat1.o test_fcmat.o makefile
 	$(LD) $(LDFLAGS) $(OBJS) fcmat1.o test_fcmat.o $(LIBS) -o $@
+
+# cache-based
+../bin/test_fcmat2: $(OBJS) fcmat2.o test_fcmat.o makefile
+	$(LD) $(LDFLAGS) $(OBJS) fcmat2.o test_fcmat.o $(LIBS) -o $@
 
 # half-stored
 ../bin/test_fcmat3: $(OBJS) fcmat3.o test_fcmat.o makefile
@@ -94,6 +103,10 @@ fcmat.o:  fcmat.c makefile
 fcmat1.o:     fcmat.h fcmat1.h $(HDRS)
 fcmat1.o:     fcmat1.c makefile
 	$(CC) $(CFLAGS) $(INCS) -c fcmat1.c -o $@
+
+fcmat2.o:     fcmat.h $(HDRS)
+fcmat2.o:     fcmat2.c makefile
+	$(CC) $(CFLAGS) $(INCS) -c fcmat2.c -o $@
 
 fcmat3.o:     fcmat.h fcmat3.h $(HDRS)
 fcmat3.o:     fcmat3.c makefile

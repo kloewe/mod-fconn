@@ -1,8 +1,8 @@
-/*----------------------------------------------------------------------
-  File    : fcmat.c
-  Contents: data type for functional connectivity matrix (all in one)
+/*----------------------------------------------------------------------------
+  File    : fcmat2.c
+  Contents: data type for functional connectivity matrix (cache-based)
   Author  : Kristian Loewe, Christian Borgelt
-----------------------------------------------------------------------*/
+----------------------------------------------------------------------------*/
 #ifndef _WIN32                  /* if Linux/Unix system */
 #define _POSIX_C_SOURCE 200809L /* needed for clock_gettime() */
 #endif
@@ -22,13 +22,11 @@
 #endif
 
 #include "cpuinfo.h"
-#include "fcmat1.h"
 #include "fcmat2.h"
-#include "fcmat3.h"
 
-/*----------------------------------------------------------------------
+/*----------------------------------------------------------------------------
   Data Type Definition / Recursion Handling
-----------------------------------------------------------------------*/
+----------------------------------------------------------------------------*/
 #ifdef REAL                     /* if REAL is defined, */
 #  undef  _FCM_PASS             /* ensure _FCM_PASS is undefined */
 #  define _FCM_PASS 0           /* define macro for single pass */
@@ -47,7 +45,7 @@
 #  define SUFFIX    _dbl        /* function name suffix is '_dbl' */
 #endif
 
-/*--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 #define float  1                /* to check the definition of REAL */
 #define double 2
 
@@ -63,7 +61,7 @@
 
 #undef float                    /* delete definitions */
 #undef double                   /* used for type checking */
-/*--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 
 #ifndef SFXNAME                 /* macros to generate function names */
 #define SFXNAME(n)      SFXNAME_1(n,SUFFIX)
@@ -71,17 +69,17 @@
 #define SFXNAME_2(n,s)  n##s    /* the two step recursion is needed */
 #endif                          /* to ensure proper expansion */
 
-/*----------------------------------------------------------------------
+/*----------------------------------------------------------------------------
   Function Prototypes (on-demand functions defined in fcmat1.h)
-----------------------------------------------------------------------*/
-extern REAL fcm_pccotf (FCMAT *fcm, DIM row, DIM col);
-extern REAL fcm_pccr2z (FCMAT *fcm, DIM row, DIM col);
-extern REAL fcm_tccotf (FCMAT *fcm, DIM row, DIM col);
-extern REAL fcm_tccr2z (FCMAT *fcm, DIM row, DIM col);
+----------------------------------------------------------------------------*/
+extern REAL SFXNAME(fcm_pccotf) (FCMAT *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_pccr2z) (FCMAT *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_tccotf) (FCMAT *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_tccr2z) (FCMAT *fcm, DIM row, DIM col);
 
-/*----------------------------------------------------------------------
+/*----------------------------------------------------------------------------
   Function Prototypes (cache-based functions defined in fcmat2.h)
-----------------------------------------------------------------------*/
+----------------------------------------------------------------------------*/
 extern REAL SFXNAME(pcc_pure)  (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 extern REAL SFXNAME(pcc_r2z)   (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 extern REAL SFXNAME(tcc_pure)  (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
@@ -93,14 +91,9 @@ extern WORKERDEF(fill, p);
 extern int  SFXNAME(fcm_fill)  (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 extern REAL SFXNAME(fcm_cache) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 
-/*----------------------------------------------------------------------
-  Function Prototypes (half-stored functions defined in fcmat3.h)
-----------------------------------------------------------------------*/
-extern REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
-
-/*----------------------------------------------------------------------
+/*----------------------------------------------------------------------------
   Functions
-----------------------------------------------------------------------*/
+----------------------------------------------------------------------------*/
 
 SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
 {                               /* --- create a func. connect. matrix */
@@ -110,7 +103,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   WORKER  *worker;              /* worker for parallel execution */
   int     i, n;                 /* loop variable for threads */
   va_list args;                 /* list of variable arguments */
-  size_t  k, z;                 /* loop variable, cache size */
+  size_t  z;                    /* cache size */
   #ifdef RECTGRID               /* if to split rectangle into grid */
   DIM     g;                    /* loop variable for grid size */
   #endif
@@ -121,7 +114,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   fcm->V       = V;             /* note the number of voxels */
   fcm->T       = T;             /* and  the number of scans */
   fcm->X       = T;             /* default: data blocks like scans */
-  fcm->tile    = 0;             /* default: compute on the fly */
+  fcm->tile    = 8192;          /* default: 8192 */
   fcm->mode    = mode;          /* note the processing mode */
   fcm->nthd    = proccnt();     /* default: use all processors */
   fcm->mem     = NULL;          /* clear memory block, */
@@ -144,10 +137,10 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   #endif                        /* (for time loss computation) */
 
   va_start(args, mode);         /* start variable arguments */
-  if (mode & FCM_THREAD)        /* if to use a threaded version */
-    fcm->nthd = va_arg(args, int); /* get the number of threads */
-  if (mode & FCM_CACHE)         /* if to use a cached version */
-    fcm->tile = va_arg(args, DIM); /* get the tile/cache size */
+  if (mode & FCM_THREAD)        /* get the number of threads, if indicated */
+    fcm->nthd = va_arg(args, int);
+  if (mode & FCM_CACHE)         /* get the tile/cache size, if indicated */
+    fcm->tile = va_arg(args, DIM);
   assert((fcm->tile == 0) || (fcm->tile <= V));
   va_end(args);                 /* end variable arguments */
   if (fcm->nthd < 1) fcm->nthd = 1;
@@ -179,7 +172,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     fcm->X = ((int)T+31) >> 5;  /* get block size of binarized data */
     #endif
     fcm->mem  =                 /* allocate memory for binarized data */
-    fcm->data = SFXNAME(binarize)(data, (int)V, (int)T, BIN_MEDIAN,BPI);
+    fcm->data = SFXNAME(binarize)(data, (int)V, (int)T, BIN_MEDIAN, BPI);
     if (!fcm->data) { SFXNAME(fcm_delete)(fcm); return NULL; };
     fcm->cmap = SFXNAME(make_cmap)((int)T); /* create cosine map */
     if (!fcm->cmap) { SFXNAME(fcm_delete)(fcm); return NULL; };
@@ -191,15 +184,15 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   
   if (!(fcm->mode & FCM_R2Z))   /* if pure correlation coefficients */
     fcm->get = (mode == FCM_PCC)
-             ? SFXNAME(fcm_pccotf) : SFXNAME(fcm_tccotf);
+    ? SFXNAME(fcm_pccotf) : SFXNAME(fcm_tccotf);
   else {                        /* if to apply Fisher's r to z trans. */
     fcm->get = (mode == FCM_PCC)
-             ? SFXNAME(fcm_pccr2z) : SFXNAME(fcm_tccr2z);
+    ? SFXNAME(fcm_pccr2z) : SFXNAME(fcm_tccr2z);
   }                             /* get the element retrieval function */
   
-  if      (fcm->tile <= 0)      /* if computation on the fly */
+  if      (fcm->tile <= 0 || fcm->tile == V)
     fcm->cget = fcm->get;       /* get the element retrieval function */
-  else if (fcm->tile <  V) {    /* if to cache smaller areas */
+  else if (fcm->tile < V) {
     z = (size_t)fcm->tile *(size_t)fcm->tile;
     fcm->cache    = (REAL*)  malloc(z *sizeof(REAL));
     fcm->threads  = (THREAD*)malloc((size_t)fcm->nthd *sizeof(THREAD));
@@ -243,28 +236,13 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     #endif
     fcm->cget = SFXNAME(fcm_cache);
     fcm->ra = fcm->rb = -1;     /* get element retrieval function and */
-    fcm->ca = fcm->cb = -1; }   /* invalidate row and column range */
-  else {                        /* if to cache the whole matrix */
-    z = (size_t)V *(size_t)(V-1)/2; /* cache for upper triangle */
-    fcm->cache = (REAL*)malloc(z *sizeof(REAL));
-    if (!fcm->cache) { SFXNAME(fcm_delete)(fcm); return NULL; }
-    if (mode == FCM_PCC)        /* if Pearson correlation cofficient */
-      SFXNAME(pccx)    (data, fcm->cache, (int)V, (int)T,
-                        PCC_AUTO|PCC_THREAD, fcm->nthd);
-    else                        /* if tetrachoric correlation coeff. */
-      SFXNAME(tetraccx)(data, fcm->cache, (int)V, (int)T,
-                        TCC_AUTO|TCC_THREAD, fcm->nthd);
-    fcm->cget = SFXNAME(fcm_full);
-    fcm->get  = SFXNAME(fcm_full);
-    if (fcm->mode & FCM_R2Z)    /* if Fisher's r-to-z transform, */
-      for (k = 0; k < z; k++)   /* transform the matrix elements */
-        fcm->cache[k] = SFXNAME(fisher_r2z)(fcm->cache[k]);
-  }                             /* set the element retrieval function */
+    fcm->ca = fcm->cb = -1;     /* invalidate row and column range */
+  }
 
   return fcm;                   /* return created FC matrix */
 } /* fcm_create() */
 
-/*--------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 
 void SFXNAME(fcm_delete) (SFXNAME(FCMAT) *fcm)
 {                               /* --- delete a func. connect. matrix */
@@ -311,11 +289,11 @@ void SFXNAME(fcm_delete) (SFXNAME(FCMAT) *fcm)
   free(fcm);                    /* data, and the base structure */
 } /* fcm_delete() */
 
-/*----------------------------------------------------------------------
+/*----------------------------------------------------------------------------
   Recursion Handling
-----------------------------------------------------------------------*/
+----------------------------------------------------------------------------*/
 #if _FCM_PASS == 1              /* if in first of two passes */
 #undef REAL
 #undef SUFFIX
-#include "fcmat.c"              /* process file recursively */
+#include "fcmat2.c"              /* process file recursively */
 #endif

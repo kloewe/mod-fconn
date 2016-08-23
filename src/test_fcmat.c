@@ -26,6 +26,7 @@
 #include "pcc.h"
 #include "tetracc.h"
 #include "fcmat.h"
+#include "nodedeg.h"
 
 /*----------------------------------------------------------------------
   Preprocessor definitions
@@ -235,9 +236,10 @@ int main (int argc, char* argv[])
   }
   if (optarg) error(E_OPTARG);  /* check option arguments */
   if (k != 2) error(E_ARGCNT);  /* and number of arguments */
-  if (P <  0) error(-10);       /* and the number of threads */
-  if (C <  0) error(-10);       /* get the tile size for caching */
-  if (S <  0) error(-10);       /* get the seed value and */
+  if (P <  0) error(1, "P < 0");/* and the number of threads */
+  if (C <  0) error(1, "C < 0");/* get the tile size for caching */
+  if (C >  V) error(1, "C > V");
+  if (S <  0) error(1, "S < 0");/* get the seed value and */
   srand((unsigned)S);           /* seed the random number generator */
   E = (size_t)V*(size_t)(V-1)/2;/* compute the number of edges */
   fprintf(stderr, "\n");        /* terminate the startup message */
@@ -271,7 +273,7 @@ int main (int argc, char* argv[])
         diff += 1;              /* print any difference and */
       }                         /* count the number of differences */
     }
-    fcm_delete(fcm);   /* delete the func. connect. matrix */
+    fcm_delete(fcm);            /* delete the func. connect. matrix */
     if (diff) fprintf(stderr, "failed [%d].\n", diff);
     else      fprintf(stderr, "passed.\n");
 

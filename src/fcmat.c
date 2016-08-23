@@ -235,7 +235,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     }                           /* delete the matrix and abort */
     #endif
     #ifdef RECTGRID             /* if to split rectangle into grid */
-    for (g = (DIM)floor(sqrt((double)fcm->nthd)); g > 1; g--)
+    for (g = (DIM)floor(sqrt((REAL)fcm->nthd)); g > 1; g--)
       if (g *(fcm->nthd/g) == fcm->nthd)
         break;                  /* compute factors as close as */
     fcm->gc = g;                /* possible to the square root */

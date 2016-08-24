@@ -4,10 +4,7 @@
   Author  : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------------*/
 #include <stdlib.h>
-#include <stdio.h>
-#include <stddef.h>
 #include <stdarg.h>
-#include <time.h>
 #include <pthread.h>
 #include <assert.h>
 #include "cpuinfo.h"

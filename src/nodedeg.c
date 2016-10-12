@@ -187,27 +187,30 @@ int fcm_nodedeg_multi(FCMAT *fcm, REAL thr, DIM *res, int nthd)
  * res   result: node degrees
  * mode  contains bit flags
  *       0          -> use defaults (no optional parameters)
- *       FCM_THREAD -> set number of threads (optional parameter 'nthd')
+ *       FCM_THREAD -> set number of threads (optional parameter #1)
  *
  * optional parameters
- * nthd  number of threads
- * 
+ * #1    number of threads
+ *       0    use single-threaded version
+ *       1-n  use multi-threaded version with p threads
+ *
  * returns
  * 0 on success
  */
 int fcm_nodedeg(FCMAT *fcm, REAL thr, DIM *res, int mode, ...)
 {
-  int nthd = corecnt();                   // default number of threads
   va_list args;                           // list of variable arguments
-
   va_start(args, mode);                   // start variable arguments
-  if (mode & FCM_THREAD)                  // if to use a threaded version
-    nthd = va_arg(args, int);             // get the number of threads
+  int ncores = corecnt();                 // # cores
+  int p = (ncores > 1) ? ncores : 0;      // set default # threads
+  if (mode & FCM_THREAD)                  // if # threads has been specified
+    p = va_arg(args, int);                // get # threads
   va_end(args);                           // end variable arguments
-  if (nthd < 0) return -1;
-
-  if (nthd > 0)                           // compute degrees
-    return fcm_nodedeg_multi (fcm, thr, res, nthd);
-  else
+  
+  if      (p >  0)                        // compute degrees
+    return fcm_nodedeg_multi (fcm, thr, res, p);
+  else if (p == 0)
     return fcm_nodedeg_single(fcm, thr, res);
+  else
+    return -1;
 }  // fcm_nodedeg()

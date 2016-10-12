@@ -22,15 +22,16 @@
  * res   result: node degrees
  * mode  contains bit flags
  *       0          -> use defaults (no optional parameters)
- *       FCM_THREAD -> set number of threads (optional parameter 'nthd')
+ *       FCM_THREAD -> set number of threads (optional parameter #1)
  *
  * optional parameters
- * nthd  number of threads
+ * #1    number of threads
+ *       0    use single-threaded version
+ *       1-n  use multi-threaded version with p threads
  * 
  * returns
  * 0 on success
  */
 extern int fcm_nodedeg(FCMAT *fcm, REAL thr, DIM *res, int mode, ...);
-
 
 #endif  /* #ifndef NODEDEG_H */

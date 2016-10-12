@@ -119,7 +119,7 @@ nodedeg.o:    nodedeg.c makefile
 #-----------------------------------------------------------------------------
 # External Modules
 #-----------------------------------------------------------------------------
-$(CPUINFODIR)/cpuinfo.o:
+$(CPUINFODIR)/obj/cpuinfo.o:
 	cd $(CPUINFODIR); $(MAKE) cpuinfo.o
 
 $(CORRDIR)/pcc.o:

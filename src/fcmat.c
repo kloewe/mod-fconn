@@ -26,6 +26,10 @@
 #include "fcmat2.h"
 #include "fcmat3.h"
 
+#ifndef NDEBUG
+#line __LINE__ "fcmat.c"
+#endif
+
 /*----------------------------------------------------------------------
   Data Type Definition / Recursion Handling
 ----------------------------------------------------------------------*/
@@ -121,9 +125,9 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   fcm->V       = V;             /* note the number of voxels */
   fcm->T       = T;             /* and  the number of scans */
   fcm->X       = T;             /* default: data blocks like scans */
-  fcm->tile    = 0;             /* default: compute on the fly */
+  fcm->tile    = -1;            /* default: auto-determine */
   fcm->mode    = mode;          /* note the processing mode */
-  fcm->nthd    = proccnt();     /* default: use all processors */
+  fcm->nthd    = -1;            /* default: auto-determine */
   fcm->mem     = NULL;          /* clear memory block, */
   fcm->cmap    = NULL;          /* cosine map and cache */
   fcm->cache   = NULL;          /* for easier cleanup */
@@ -142,15 +146,38 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   fcm->sum     = fcm->beg = fcm->end = 0;
   fcm->cnt     = 0;             /* initialize benchmark variables */
   #endif                        /* (for time loss computation) */
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
 
   va_start(args, mode);         /* start variable arguments */
   if (mode & FCM_THREAD)        /* if to use a threaded version */
     fcm->nthd = va_arg(args, int); /* get the number of threads */
+  assert((fcm->nthd == -1) || ((fcm->nthd >= 1) && (fcm->nthd <= 1024)));
+  if (fcm->nthd == 0)           /* nthd = 0 is not allowed */
+    fcm->nthd = 1;
   if (mode & FCM_CACHE)         /* if to use a cached version */
-    fcm->tile = va_arg(args, DIM); /* get the tile/cache size */
-  assert((fcm->tile == 0) || (fcm->tile <= V));
+    fcm->tile = va_arg(args, int); /* get the tile/cache size */
+  assert((fcm->tile == -1) || ((fcm->tile >= 0) && (fcm->tile <= V)));
   va_end(args);                 /* end variable arguments */
-  if (fcm->nthd < 1) fcm->nthd = 1;
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
+
+  /* # threads */
+  if (fcm->nthd == -1)          /* auto-determine */
+    fcm->nthd = (proccnt() > 6) ? proccnt() : 0;
+
+  /* tile size */
+  if (fcm->tile == -1) {        /* auto-determine */
+    if (fcm->V < 20000)
+      fcm->tile = fcm->V;       /* half-stored */
+    else {
+      if (fcm->nthd <= 6)
+        fcm->tile = 1024;       /* cache-based (tile size: 1024) */
+      else
+        fcm->tile = 0;          /* on-demand */
+    }
+  }
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
+  assert((fcm->nthd >= 1) && (fcm->nthd <= 1024));
+  assert((fcm->tile >= 0) && (fcm->tile <= fcm->V));
 
   mode &= FCM_CORR;             /* get the correlation type */
   if      (mode == FCM_PCC) {   /* if Pearson's correlation coeff. */
@@ -188,7 +215,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     fprintf(stderr, "fcm_create: unknown correlation variant\n");
     free(fcm); return NULL;     /* print an error message */
   }                             /* and abort the function */
-  
+
   if (!(fcm->mode & FCM_R2Z))   /* if pure correlation coefficients */
     fcm->get = (mode == FCM_PCC)
              ? SFXNAME(fcm_pccotf) : SFXNAME(fcm_tccotf);
@@ -196,7 +223,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     fcm->get = (mode == FCM_PCC)
              ? SFXNAME(fcm_pccr2z) : SFXNAME(fcm_tccr2z);
   }                             /* get the element retrieval function */
-  
+
   if      (fcm->tile <= 0)      /* if computation on the fly */
     fcm->cget = fcm->get;       /* get the element retrieval function */
   else if (fcm->tile <  V) {    /* if to cache smaller areas */

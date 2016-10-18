@@ -76,6 +76,15 @@
 #endif                          /* thread signaling variables */
 #endif
 
+#ifdef NDEBUG
+#define DBGMSG(...)  ((void)0)
+#else
+#include <stdio.h>
+#define DBGMSG(...)  do { fprintf(stderr, "%s:%d:%s()\n", \
+                          __FILE__, __LINE__, __func__); \
+                          fprintf(stderr, __VA_ARGS__); } while(0)
+#endif
+
 /*----------------------------------------------------------------------
   Type Definitions
 ----------------------------------------------------------------------*/

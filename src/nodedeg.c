@@ -42,7 +42,7 @@ typedef void*        WORKER (void*);
  * fcm  FC matrix
  * thr  FC threshold
  * res  result: node degrees
- * 
+ *
  * returns
  * 0 on success
  */
@@ -123,7 +123,7 @@ static void* fcm_nodedeg_wrk(void* p)
  * thr   FC threshold
  * res   result: node degrees
  * nthd  number of threads
- * 
+ *
  * returns
  * 0 on success
  */
@@ -178,7 +178,7 @@ int fcm_nodedeg_multi(FCMAT *fcm, REAL thr, DIM *res, int nthd)
 /*--------------------------------------------------------------------------*/
 
 /* fcm_nodedeg
- * -----------------
+ * -----------
  * compute node degrees based on a FC matrix and a FC threshold
  *
  * mandatory parameters
@@ -191,6 +191,7 @@ int fcm_nodedeg_multi(FCMAT *fcm, REAL thr, DIM *res, int nthd)
  *
  * optional parameters
  * #1    number of threads
+ *      -1    auto-determine
  *       0    use single-threaded version
  *       1-n  use multi-threaded version with p threads
  *
@@ -199,17 +200,34 @@ int fcm_nodedeg_multi(FCMAT *fcm, REAL thr, DIM *res, int nthd)
  */
 int fcm_nodedeg(FCMAT *fcm, REAL thr, DIM *res, int mode, ...)
 {
-  va_list args;                           // list of variable arguments
-  va_start(args, mode);                   // start variable arguments
-  int ncores = corecnt();                 // # cores
-  int p = (ncores > 1) ? ncores : 0;      // set default # threads
-  if (mode & FCM_THREAD)                  // if # threads has been specified
-    p = va_arg(args, int);                // get # threads
-  va_end(args);                           // end variable arguments
-  
-  if      (p >  0)                        // compute degrees
-    return fcm_nodedeg_multi (fcm, thr, res, p);
-  else if (p == 0)
+  int N = fcm->V;                         // # nodes
+  int P = -1;                             // # threads
+  int C = fcm->tile;                      // cache/tile size
+  DBGMSG("N: %d  P: %d  C: %d\n", N, P, C);
+
+  // get user-specified # threads
+  if (mode & FCM_THREAD) {
+    va_list args;
+    va_start(args, mode);
+    P = va_arg(args, int);
+    va_end(args);
+  }
+  DBGMSG("N: %d  P: %d  C: %d\n", N, P, C);
+
+  // auto-determine # threads
+  if (P == -1) {
+    if (C == 0 || C == N) {
+      int nprocs = proccnt();
+      P = (nprocs > 1) ? nprocs : 0; }
+    else
+      P = 0;
+  }
+  DBGMSG("N: %d  P: %d  C: %d\n", N, P, C);
+
+  // compute degrees
+  if      (P >  0)
+    return fcm_nodedeg_multi (fcm, thr, res, P);
+  else if (P == 0)
     return fcm_nodedeg_single(fcm, thr, res);
   else
     return -1;

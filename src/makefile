@@ -31,6 +31,7 @@ LDFLAGS    =
 LIBS       = -lm -lrt -lpthread
 
 OUTDIR     = ../bin
+_DUMMY    := $(shell mkdir $(OUTDIR))
 HDRS       = $(CPUINFODIR)/cpuinfo.h \
              $(CORRDIR)/clamp.h \
              $(CORRDIR)/binarize.h \
@@ -48,11 +49,6 @@ PRGS       = test_fcmat test_fcmat1 test_fcmat2 test_fcmat3
 # Build Programs
 #-----------------------------------------------------------------------------
 all: $(PRGS)
-
-$(PRGS): | $(OUTDIR)
-
-$(OUTDIR):
-	mkdir -p $(OUTDIR)
 
 # all-in-one
 test_fcmat:  ../bin/test_fcmat

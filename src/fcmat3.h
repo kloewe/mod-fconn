@@ -55,6 +55,18 @@ inline REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
                     : INDEX(row, col, fcm->V)];
 }  /* fcm_full() */
 
+inline REAL SFXNAME(fcm_full_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
+{                               /* --- get corr.c. from full rep. */
+  assert(fcm                    /* check the function arguments */
+  &&    (row >= 0) && (row < fcm->V) && (col >= 0) && (col < fcm->V));
+  if (row == col)               /* if diagonal element, */
+    return (REAL)+R2Z_MAX;      /* return a fixed value */
+  REAL r = fcm->cache[(row > col) /* retrieve the correlation coeff. */
+                    ? INDEX(col, row, fcm->V)
+                    : INDEX(row, col, fcm->V)];
+  return fisher_r2z(r);
+}  /* fcm_full_r2z() */
+
 /*----------------------------------------------------------------------------
   Recursion Handling
 ----------------------------------------------------------------------------*/

@@ -72,7 +72,8 @@
 /*----------------------------------------------------------------------------
   Function Prototypes (half-stored functions defined in fcmat3.h)
 ----------------------------------------------------------------------------*/
-extern REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_full)     (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_full_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 
 /*----------------------------------------------------------------------------
   Functions

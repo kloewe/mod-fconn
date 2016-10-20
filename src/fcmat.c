@@ -100,7 +100,8 @@ extern REAL SFXNAME(fcm_cache) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 /*----------------------------------------------------------------------
   Function Prototypes (half-stored functions defined in fcmat3.h)
 ----------------------------------------------------------------------*/
-extern REAL SFXNAME(fcm_full) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_full)     (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
+extern REAL SFXNAME(fcm_full_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col);
 
 /*----------------------------------------------------------------------
   Functions
@@ -114,7 +115,7 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   WORKER  *worker;              /* worker for parallel execution */
   int     i, n;                 /* loop variable for threads */
   va_list args;                 /* list of variable arguments */
-  size_t  k, z;                 /* loop variable, cache size */
+  size_t  z;                    /* cache size */
   #ifdef RECTGRID               /* if to split rectangle into grid */
   DIM     g;                    /* loop variable for grid size */
   #endif
@@ -281,13 +282,14 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
     else                        /* if tetrachoric correlation coeff. */
       SFXNAME(tetraccx)(data, fcm->cache, (int)V, (int)T,
                         TCC_AUTO|TCC_THREAD, fcm->nthd);
-    fcm->cget = SFXNAME(fcm_full);
-    fcm->get  = SFXNAME(fcm_full);
-    if (fcm->mode & FCM_R2Z)    /* if Fisher's r-to-z transform, */
-      for (k = 0; k < z; k++)   /* transform the matrix elements */
-        fcm->cache[k] = SFXNAME(fisher_r2z)(fcm->cache[k]);
-  }                             /* set the element retrieval function */
-
+    if (!(fcm->mode & FCM_R2Z)) {/* if to compute pure corr. coeffs. */
+      fcm->cget = SFXNAME(fcm_full);
+      fcm->get = SFXNAME(fcm_full); }
+    else {                       /* if to apply Fisher's r to z trans. */
+      fcm->cget = SFXNAME(fcm_full_r2z);
+      fcm->get = SFXNAME(fcm_full_r2z);
+    }                            /* set the element retrieval function */
+  }
   return fcm;                   /* return created FC matrix */
 } /* fcm_create() */
 

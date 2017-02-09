@@ -176,7 +176,7 @@ inline int SFXNAME(fcm_first) (SFXNAME(FCMAT) *fcm)
   fcm->err = 0;                 /* clear the error status */
   fcm->row = 0; fcm->col = 1;   /* start with first off-diag. element */
   fcm->value = fcm->cget(fcm, 0, 1);
-  return (fcm->err) ? -1 : +1;  /* store the value and return status */
+  return (fcm->err) ? -1 : 0;   /* store the value and return status */
 }  /* fcm_first() */
 
 /*--------------------------------------------------------------------------*/
@@ -195,11 +195,12 @@ inline int SFXNAME(fcm_next) (SFXNAME(FCMAT) *fcm)
     if (fcm->col >= fcm->cb) {  /* if at the end of a strip */
       fcm->row = 0;             /* start a new strip */
       fcm->col = fcm->cb;       /* (row 0, first column after strip) */
-      if (fcm->col >= fcm->V) return 0;
+      if (fcm->col >= fcm->V)
+        return 1;
     }                           /* if whole matrix is traversed, */
   }                             /* abort the function with failure */
   fcm->value = fcm->cget(fcm, fcm->row, fcm->col);
-  return (fcm->err) ? -1 : +1;  /* store the value and return status */
+  return (fcm->err) ? -1 : 0;   /* store the value and return status */
 }  /* fcm_next() */
 
 /*----------------------------------------------------------------------------

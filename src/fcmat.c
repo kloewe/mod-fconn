@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------
   File    : fcmat.c
   Contents: data type for functional connectivity matrix (all in one)
-  Author  : Kristian Loewe, Christian Borgelt
+  Authors : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------*/
 #ifndef _WIN32                  /* if Linux/Unix system */
 #define _POSIX_C_SOURCE 200809L /* needed for clock_gettime() */
@@ -127,8 +127,9 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   fcm->T       = T;             /* and  the number of scans */
   fcm->X       = T;             /* default: data blocks like scans */
   fcm->tile    = -1;            /* default: auto-determine */
-  fcm->mode    = mode;          /* note the processing mode */
+  fcm->maxmem  = -1;            /* default: auto-determine */
   fcm->nthd    = -1;            /* default: auto-determine */
+  fcm->mode    = mode;          /* note the processing mode */
   fcm->mem     = NULL;          /* clear memory block, */
   fcm->cmap    = NULL;          /* cosine map and cache */
   fcm->cache   = NULL;          /* for easier cleanup */
@@ -147,38 +148,72 @@ SFXNAME(FCMAT)* SFXNAME(fcm_create) (REAL *data, DIM V, DIM T, int mode, ...)
   fcm->sum     = fcm->beg = fcm->end = 0;
   fcm->cnt     = 0;             /* initialize benchmark variables */
   #endif                        /* (for time loss computation) */
-  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d  maxmem [GiB]: %f\n",
+          fcm->T, fcm->V, fcm->nthd, fcm->tile, fcm->maxmem);
 
-  va_start(args, mode);         /* start variable arguments */
-  if (mode & FCM_THREAD)        /* if to use a threaded version */
-    fcm->nthd = va_arg(args, int); /* get the number of threads */
+  /* variable arguments */
+  va_start(args, mode);
+
+  if (mode & FCM_THREAD)        /* number of threads */
+    fcm->nthd = va_arg(args, int);
   assert((fcm->nthd == -1) || ((fcm->nthd >= 1) && (fcm->nthd <= 1024)));
   if (fcm->nthd == 0)           /* nthd = 0 is not allowed */
     fcm->nthd = 1;
-  if (mode & FCM_CACHE)         /* if to use a cached version */
-    fcm->tile = va_arg(args, int); /* get the tile/cache size */
+
+  if (mode & FCM_CACHE)         /* cache parameter (tile/cache size) */
+    fcm->tile = va_arg(args, int);
   assert((fcm->tile == -1) || ((fcm->tile >= 0) && (fcm->tile <= V)));
-  va_end(args);                 /* end variable arguments */
-  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
 
-  /* # threads */
-  if (fcm->nthd == -1)          /* auto-determine */
-    fcm->nthd = (proccnt() > 6) ? proccnt() : 0;
+  if (mode & FCM_MAXMEM)        /* max. amount of memory */
+    fcm->maxmem = va_arg(args, double);
 
-  /* tile size */
-  if (fcm->tile == -1) {        /* auto-determine */
-    if (fcm->V < 20000)
-      fcm->tile = fcm->V;       /* half-stored */
-    else {
+  va_end(args);
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d  maxmem [GiB]: %f\n",
+          fcm->T, fcm->V, fcm->nthd, fcm->tile, fcm->maxmem);
+
+  /* number of threads */
+  if (fcm->nthd == -1)          /* if auto-determine */
+    fcm->nthd = proccnt();      /* use number of logical processors */
+
+  /* max memory */
+  if (fcm->maxmem < 0)          /* if auto-determine */
+    fcm->maxmem = 2.0;          /* use 2 GiB */
+  fcm->maxmem = fcm->maxmem * 1024*1024*1024;
+  DBGMSG("maxmem [B]: %f\n", fcm->maxmem);
+
+  /* cache size */
+  size_t E = (size_t)V * (size_t)(V-1)/2;
+  if (fcm->tile == fcm->V) {    /* if half-stored */
+    if ((E * sizeof(REAL)) > fcm->maxmem) {
       if (fcm->nthd <= 6)
-        fcm->tile = 1024;       /* cache-based (tile size: 1024) */
+        fcm->tile = 1024;
       else
-        fcm->tile = 0;          /* on-demand */
+        fcm->tile = 0;
+      WARNING("fcm->tile has been set to %d to enforce the specified"
+              "memory limit.\n", fcm->tile);
     }
   }
-  DBGMSG("T: %d  N: %d  P: %4d  C: %d\n", fcm->T, fcm->V, fcm->nthd, fcm->tile);
+  if ((fcm->tile < V)           /* if cache-based */
+      && (fcm->tile > 0)) {
+    if (((size_t)fcm->tile *(size_t)fcm->tile *sizeof(REAL)) > fcm->maxmem) {
+      fcm->tile = 0;
+      WARNING("fcm->tile has been set to %d to enforce the specified"
+              "memory limit.\n", fcm->tile);
+    }
+  }
+  if (fcm->tile == -1) {        /* if auto-determine */
+    if ((E * sizeof(REAL)) <= fcm->maxmem)
+      fcm->tile = fcm->V;       /* use half-stored */
+    else if ((1024*1024 * sizeof(REAL) <= fcm->maxmem) && (fcm->nthd <= 6))
+      fcm->tile = 1024;         /* use cache-based (tile size: 1024) */
+    else
+      fcm->tile = 0;            /* use on-demand */
+  }
+  DBGMSG("T: %d  N: %d  P: %4d  C: %d  maxmem [B]: %f\n",
+          fcm->T, fcm->V, fcm->nthd, fcm->tile, fcm->maxmem);
   assert((fcm->nthd >= 1) && (fcm->nthd <= 1024));
   assert((fcm->tile >= 0) && (fcm->tile <= fcm->V));
+  assert((fcm->maxmem >= 0));
 
   mode &= FCM_CORR;             /* get the correlation type */
   if      (mode == FCM_PCC) {   /* if Pearson's correlation coeff. */

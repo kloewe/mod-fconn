@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------
   File    : fcmat.h
   Contents: data type for functional connectivity matrix
-  Author  : Kristian Loewe, Christian Borgelt
+  Authors : Kristian Loewe, Christian Borgelt
 ----------------------------------------------------------------------*/
 #ifndef FCMAT_H
 
@@ -63,8 +63,10 @@
 
 #define FCM_CACHE   0x0100      /* use a cache (needs tile size) */
 #define FCM_THREAD  0x0200      /* threads (needs thread count) */
-#define FCM_JOIN    0x0400      /* join and re-create threads */
-#endif                          /* (default is block and signal) */
+#define FCM_JOIN    0x0400      /* join and re-create threads (default is
+                                 * block and signal) */
+#define FCM_MAXMEM  0x0800      /* max. amount of memory (needs mem. limit) */
+#endif
 
 #ifndef THREAD                  /* if not yet defined */
 #ifdef _WIN32                   /* if Microsoft Windows system */
@@ -77,12 +79,47 @@
 #endif
 
 #ifdef NDEBUG
-#define DBGMSG(...)  ((void)0)
+#  define DBGMSG(...)  ((void)0)
+#  if defined(MATLAB_MEX_FILE)
+#    include "mex.h"
+#    define WARNING(...) do { mexWarnMsgIdAndTxt("warn:id",  __VA_ARGS__); } \
+                           while(0)
+#    define ERROR(...)   do { mexErrMsgIdAndTxt ("error:id", __VA_ARGS__); } \
+                           while(0)
+#  else
+#    include <stdio.h>
+#    define WARNING(...) do { fprintf(stderr, "WARNING: ");
+                              fprintf(stderr, __VA_ARGS__); } while(0)
+#    define ERROR(...)   do { fprintf(stderr, "ERROR: ");
+                              fprintf(stderr, __VA_ARGS__); } while(0)
+#  endif
 #else
-#include <stdio.h>
-#define DBGMSG(...)  do { fprintf(stderr, "%s:%d:%s()\n", \
-                          __FILE__, __LINE__, __func__); \
-                          fprintf(stderr, __VA_ARGS__); } while(0)
+#  if defined(MATLAB_MEX_FILE)
+#    include "mex.h"
+#    define DBGMSG(...)  do { mexPrintf("DBGMSG @ %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              mexPrintf(__VA_ARGS__); \
+                              mexEvalString("drawnow"); } while(0)
+#    define ERROR(...)   do { mexPrintf("ERROR @ %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              mexErrMsgIdAndTxt ("error:id", __VA_ARGS__); } \
+                           while(0)
+#    define WARNING(...) do { mexPrintf("WARNING @  %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              mexWarnMsgIdAndTxt("warn:id",  __VA_ARGS__); } \
+                           while(0)
+#  else
+#    include <stdio.h>
+#    define DBGMSG(...)  do { fprintf(stderr, "DBGMSG @ %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              fprintf(stderr, __VA_ARGS__); } while(0)
+#    define WARNING(...) do { fprintf(stderr, "WARNING @ %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              fprintf(stderr, __VA_ARGS__); } while(0)
+#    define WARNING(...) do { fprintf(stderr, "ERROR @ %s:%d:%s()\n", \
+                              __FILE__, __LINE__, __func__); \
+                              fprintf(stderr, __VA_ARGS__); } while(0)
+#  endif
 #endif
 
 /*----------------------------------------------------------------------
@@ -98,6 +135,7 @@ typedef struct SFXNAME(fcmat) { /* --- a func. connectivity matrix */
   DIM    X;                     /* size of padded/binarized data */
   int    mode;                  /* processing mode (e.g. FCM_PCC) */
   DIM    tile;                  /* size of tiles/blocks for caching */
+  double maxmem;                /* max. memory (in GiB) */
   DIM    nthd;                  /* number of threads for computation */
   void   *data;                 /* normalized/binarized data */
   void   *mem;                  /* allocated memory block */

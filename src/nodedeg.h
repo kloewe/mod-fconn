@@ -26,8 +26,9 @@
  *
  * optional parameters
  * #1    number of threads
- *       0    use single-threaded version
- *       1-n  use multi-threaded version with p threads
+ *        -1    auto-determine
+ *         0    use single-threaded version
+ *         1-p  use multi-threaded version with p threads
  * 
  * returns
  * 0 on success

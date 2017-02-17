@@ -14,12 +14,22 @@
 #include "stats.h"
 #include "fcmat.h"
 #include "matrix.h"
-#include "pcc.h"
+#include "dot.h"
 #include "edgestats.h"
-#include "mex.h"
+
+#if defined(MATLAB_MEX_FILE)
+#  include "mex.h"
+#endif
 
 #ifndef NDEBUG
-#line __LINE__ "edgestats.c"
+#  line __LINE__ "edgestats.c"
+#endif
+
+#include "real-is-double.inc"
+#if REAL_IS_DOUBLE
+#  define dot ddot
+#else
+#  define dot sdot
 #endif
 
 /*----------------------------------------------------------------------------
@@ -72,8 +82,8 @@ static int fcm_uni_single(FCMAT **fcm, int n, fn_ptr f, MATRIX *mos)
   // allocate aligned memory for a temp. array (for FC values)
   void *mem = malloc((size_t)n *sizeof(REAL) +31);
   if (!mem) {
-    DBGMSG("ERROR: malloc failed");       // return 'failure'
-    return -1; }
+    DBGMSG("ERROR: malloc failed");
+    return -1; }                          // return 'failure'
   REAL *a = (REAL*)(((uintptr_t)mem +31) & ~(uintptr_t)31);
 
   // compute statistics
@@ -313,37 +323,56 @@ static int fcm_corr_single(FCMAT **fcm, int n, REAL *v, MATRIX *mos)
 {
   assert(fcm && v && mos && (n > 0));
 
-  // allocate (aligned) memory for a temp. array (for FC values and variable)
-  // and a variable for the correlation value
-  void *mem = malloc((size_t)(2*n+1) *sizeof(REAL) +31);
-  if (!mem) {
-    DBGMSG("ERROR: malloc failed");       // return 'failure'
-    return -1; }
-  REAL *a = (REAL*)(((uintptr_t)mem +31) & ~(uintptr_t)31);
-  REAL *r = a + 2*n;
+  // allocate (aligned) memory for the pre-normalized values (add. variable)
+  void *mem1 = malloc((size_t)n *sizeof(REAL) +31);
+  if (!mem1) {
+    DBGMSG("ERROR: malloc failed");
+    return -1; }                          // return 'failure'
+  REAL *a = (REAL*)(((uintptr_t)mem1 +31) & ~(uintptr_t)31);
 
-  // populate tmp array (2nd half: the variable)
+  // allocate (aligned) memory for the pre-normalized values (FC values)
+  void *mem2 = malloc((size_t)n *sizeof(REAL) +31);
+  if (!mem2) {
+    DBGMSG("ERROR: malloc failed");
+    free(mem1);
+    return -1; }                          // return 'failure'
+  REAL *b = (REAL*)(((uintptr_t)mem2 +31) & ~(uintptr_t)31);
+
+  // pre-normalize the add. variable
+  REAL sqr = 0;
+  REAL ma = mean(v, n);
+  for (int k = 0; k < n; k++) {
+    a[k] = v[k] - ma;
+    sqr += a[k]*a[k]; }
+  sqr = sqrt(sqr);
+  sqr = (sqr > 0) ? 1/sqr : 0;
   for (int k = 0; k < n; k++)
-    a[k+n] = v[k];
+    a[k] *= sqr;
 
-  // compute correlation coefficients
-  int N = fcm_dim(*fcm);                  // determine number of nodes
-  for (int i = 0; i < N; i++) {           // traverse pairs of nodes
-    for (int j = i+1; j < N; j++) {       // (upper triangular matrix)
-      for (int k = 0; k < n; k++)         // populate tmp array (1st half:
-        a[k] = fcm_get(fcm[k], i, j); // the FC values)
-      #if   defined __AVX__               // compute correlation between the
-      pccx(a, r, 2, n, PCC_AVX);          // FC values of the current pair
-      #elif defined __SSE2__              // and the additional variable
-      pccx(a, r, 2, n, PCC_SSE2);
-      #else
-      pccx(a, r, 2, n, PCC_NAIVE);
-      #endif
-      mat_set(mos, i, j, *r);
+  // compute correlation coefficients for all pairs (i,j)
+  int N = fcm_dim(*fcm);
+  for (int i = 0; i < N; i++) {
+    for (int j = i+1; j < N; j++) {
+
+      // pre-normalize the FC values
+      sqr = 0;
+      for (int k = 0; k < n; k++)
+        b[k] = fcm_get(fcm[k], i, j);
+      REAL mb = mean(b, n);
+      for (int k = 0; k < n; k++) {
+        b[k] -= mb;
+        sqr += b[k]*b[k]; }
+      sqr = sqrt(sqr);
+      sqr = (sqr > 0) ? 1/sqr : 0;
+      for (int k = 0; k < n; k++)
+        b[k] *= sqr;
+
+      mat_set(mos, i, j, dot(a, b, n));
     }
   }
 
-  free(mem);
+  free(mem1);
+  free(mem2);
 
   return 0;                               // return 'ok'
 }  // fcm_corr_single()
@@ -366,19 +395,33 @@ static void* fcm_corr_wrk(void* p)
 
   WORK *w = p;
 
-  // allocate (aligned) memory for a temp. array (for FC values and variable)
-  // and a variable for the correlation value
-  void *mem = malloc((size_t)(2*w->n+1) *sizeof(REAL) +31);
-  if (!mem) {
+  // allocate (aligned) memory for the pre-normalized values (add. variable)
+  void *mem1 = malloc((size_t)(w->n) *sizeof(REAL) +31);
+  if (!mem1) {
     DBGMSG("ERROR: malloc failed");
     w->err = -1;                          // set error indicator
     return THREAD_OK; }                   // return a dummy result
-  REAL *a = (REAL*)(((uintptr_t)mem +31) & ~(uintptr_t)31);
-  REAL *r = a + 2*w->n;
+  REAL *a = (REAL*)(((uintptr_t)mem1 +31) & ~(uintptr_t)31);
 
-  // populate tmp array (2nd half)
+  // allocate (aligned) memory for the pre-normalized values (FC values)
+  void *mem2 = malloc((size_t)(w->n) *sizeof(REAL) +31);
+  if (!mem2) {
+    DBGMSG("ERROR: malloc failed");
+    w->err = -1;                          // set error indicator
+    free(mem1);
+    return THREAD_OK; }                   // return a dummy result
+  REAL *b = (REAL*)(((uintptr_t)mem2 +31) & ~(uintptr_t)31);
+
+  // pre-normalize the add. variable
+  REAL sqr = 0;
+  REAL ma = mean(w->var, w->n);
+  for (int k = 0; k < w->n; k++) {
+    a[k] = *((REAL *)(w->var)+k) - ma;
+    sqr += a[k]*a[k]; }
+  sqr = sqrt(sqr);
+  sqr = (sqr > 0) ? 1/sqr : 0;
   for (int k = 0; k < w->n; k++)
-    a[k+w->n] = *((REAL *)(w->var)+k);
+    a[k] *= sqr;
 
   // compute correlation coefficients
   int N = fcm_dim(*(w->fcm));             // determine number of nodes
@@ -386,16 +429,21 @@ static void* fcm_corr_wrk(void* p)
     int i;
     for (i = w->s; i < w->e; i++) {       // traverse row indices
       for (int j = i+1; j < N; j++) {     // traverse column indices
-        for (int k = 0; k < w->n; k++)    // populate tmp array (1st half)
-          a[k] = fcm_get(w->fcm[k], i, j);
-        #if   defined __AVX__             // compute correlation between the
-        pccx(a, r, 2, w->n, PCC_AVX);     // FC values of the current pair
-        #elif defined __SSE2__            // and the additional variable
-        pccx(a, r, 2, w->n, PCC_SSE2);
-        #else
-        pccx(a, r, 2, w->n, PCC_NAIVE);
-        #endif
-        mat_set(w->mos, i, j, *r);
+
+        // pre-normalize the FC values
+        sqr = 0;
+        for (int k = 0; k < w->n; k++)
+          b[k] = fcm_get(w->fcm[k], i, j);
+        REAL mb = mean(b, w->n);
+        for (int k = 0; k < w->n; k++) {
+          b[k] -= mb;
+          sqr += b[k]*b[k]; }
+        sqr = sqrt(sqr);
+        sqr = (sqr > 0) ? 1/sqr : 0;
+        for (int k = 0; k < w->n; k++)
+          b[k] *= sqr;
+
+        mat_set(w->mos, i, j, dot(a, b, w->n));
       }
     }
     if (w->s > N/2) break;                // if second strip done, abort
@@ -405,7 +453,8 @@ static void* fcm_corr_wrk(void* p)
     w->s = i;                             // of the opposite strip
   }
 
-  free(mem);
+  free(mem1);
+  free(mem2);
 
   return THREAD_OK;                       // return a dummy result
 }  // fcm_corr_wrk()
@@ -587,6 +636,7 @@ static int fcm_tstat2_single(FCMAT **fcm, int n, int *g, MATRIX *mos)
     free(fcm1);
     return -1; }                          // return 'failure'
   REAL *tmp1 = (REAL*)(((uintptr_t)mem1 +31) & ~(uintptr_t)31);
+
   void *mem2 = malloc((size_t)n2 *sizeof(REAL) +31);
   if (!mem2) {
     DBGMSG("ERROR: malloc failed");

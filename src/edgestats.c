@@ -17,7 +17,7 @@
 #include "dot.h"
 #include "edgestats.h"
 
-#if defined(MATLAB_MEX_FILE)
+#if defined(MATLAB_MEX_FILE) || defined(OCTAVE)
 #  include "mex.h"
 #endif
 

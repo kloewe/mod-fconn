@@ -80,7 +80,7 @@
 
 #ifdef NDEBUG
 #  define DBGMSG(...)  ((void)0)
-#  if defined(MATLAB_MEX_FILE)
+#  if defined(MATLAB_MEX_FILE) || defined(OCTAVE)
 #    include "mex.h"
 #    define WARNING(...) do { mexWarnMsgIdAndTxt("warn:id",  __VA_ARGS__); } \
                            while(0)
@@ -94,7 +94,7 @@
                               fprintf(stderr, __VA_ARGS__); } while(0)
 #  endif
 #else
-#  if defined(MATLAB_MEX_FILE)
+#  if defined(MATLAB_MEX_FILE) || defined(OCTAVE)
 #    include "mex.h"
 #    define DBGMSG(...)  do { mexPrintf("DBGMSG @ %s:%d:%s()\n", \
                               __FILE__, __LINE__, __func__); \

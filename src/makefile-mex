@@ -17,10 +17,11 @@ CFLAGS      = -std=c99 \
 COPTIMFLAGS = -O2 -funroll-loops
 
 MATLABROOT  = $(dir $(realpath $(shell which matlab)))
-MEXCC       = $(realpath $(MATLABROOT))/mex -largeArrayDims
+MEX_FLAGS   = -largeArrayDims
+MEXCC       = $(realpath $(MATLABROOT))/mex $(MEX_FLAGS)
 
 OBJDIR      = ../obj/$(shell uname -m)/matlab
-_DUMMY      := $(shell mkdir -p $(OBJDIR); mkdir -p $(OBJDIR))
+_DUMMY      := $(shell mkdir -p $(OBJDIR))
 
 #-----------------------------------------------------------------------------
 # Build Objects

@@ -123,7 +123,7 @@ inline REAL SFXNAME(pcc_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   r = PAIR_PCC((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
                (REAL*)fcm->data +(size_t)col *(size_t)fcm->X,
                (int)fcm->T);    /* compute Pearson correlation coeff. */
-  return fisher_r2z(r);         /* apply Fisher's r to z transform */
+  return fr2z(r);         /* apply Fisher's r to z transform */
 }  /* pcc_r2z() */
 
 /*--------------------------------------------------------------------------*/
@@ -151,7 +151,7 @@ inline REAL SFXNAME(tcc_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   n = PCAND_TCC((uint32_t*)fcm->data +(size_t)row *(size_t)fcm->X,
                 (uint32_t*)fcm->data +(size_t)col *(size_t)fcm->X,
                 (int)fcm->X);   /* compute tetrachoric corr. coeff. */
-  return fisher_r2z(fcm->cmap[n]);
+  return fr2z(fcm->cmap[n]);
 }  /* tcc_r2z() */              /* apply Fisher's r to z transform */
 
 /*--------------------------------------------------------------------------*/

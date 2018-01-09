@@ -20,7 +20,7 @@ COPTIMFLAGS = -O2 -funroll-loops
 MEXCC       = mkoctfile --mex -DOCTAVE
 
 OBJDIR      = ../obj/$(shell uname -m)/octave
-_DUMMY      := $(shell mkdir -p $(OBJDIR); mkdir -p $(OBJDIR))
+_DUMMY      := $(shell mkdir -p $(OBJDIR))
 
 #-----------------------------------------------------------------------------
 # Build Objects

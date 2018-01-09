@@ -64,7 +64,7 @@ inline REAL SFXNAME(fcm_full_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
   REAL r = fcm->cache[(row > col) /* retrieve the correlation coeff. */
                     ? INDEX(col, row, fcm->V)
                     : INDEX(row, col, fcm->V)];
-  return fisher_r2z(r);
+  return fr2z(r);
 }  /* fcm_full_r2z() */
 
 /*----------------------------------------------------------------------------

@@ -2,53 +2,76 @@
 # File    : makefile-mex
 # Contents: build objects for use with matlab/mex
 # Author  : Kristian Loewe
+#
+# Usage   : make -f makefile-mex
+#           MEX_FLAGS='-v' make -f makefile-mex
+#           make -f makefile-mex | grep -v 'Warning.*gcc version'
+#           make -B -f makefile-mex | grep -v 'Warning.*gcc version'
+#           DEBUG=1 make -B -f makefile-mex | grep -v 'Warning.*gcc version' 
 #-----------------------------------------------------------------------------
-.SUFFIXES:                                   # remove built-in rules
+.SUFFIXES:
 MAKEFLAGS   += -r
 
-CORRDIR     = ../../corr
-CPUINFODIR  = ../../cpuinfo
-DOTDIR      = ../../dot
-STATSDIR    = ../../stats
+CC          ?= gcc
+CFBASE       = -std=c99 -Wall -Wextra -Wno-unused-parameter -Wconversion \
+               -Wshadow -pedantic
+DEFS        ?=
+MEX_FLAGS   ?=
 
-CFLAGS      = -std=c99 \
-              -Wall -Wextra -Wno-unused-parameter -Wconversion -Wshadow \
-              -pedantic -fPIC
-COPTIMFLAGS = -O2 -funroll-loops
+DEBUG       ?= 0
+ifeq ($(DEBUG), 1)
+  CFBASE    += -g
+  CFOPT     ?= -O0
+else
+  CFOPT     ?= -O2 -funroll-loops
+  DEFS      += -DNDEBUG
+endif
+CFLAGS       = $(CFBASE) -fPIC $(DEFS)
 
-MATLABROOT  = $(dir $(realpath $(shell which matlab)))
-MEX_FLAGS   = -largeArrayDims
-MEXCC       = $(realpath $(MATLABROOT))/mex $(MEX_FLAGS)
+MATLABROOT   = $(dir $(realpath $(shell which matlab)))
+MEXCC        = $(realpath $(MATLABROOT))/mex -largeArrayDims $(MEX_FLAGS) \
+               CFLAGS='$(CFLAGS)'
 
-OBJDIR      = ../obj/$(shell uname -m)/matlab
+OBJDIR       = ../obj/$(shell uname -m)/matlab
 _DUMMY      := $(shell mkdir -p $(OBJDIR))
+
+#-----------------------------------------------------------------------------
+
+CORRDIR      = ../../corr
+CPUINFODIR   = ../../cpuinfo
+DOTDIR       = ../../dot
+STATSDIR     = ../../stats
+
+INCS         = -I$(CPUINFODIR)/src -I$(DOTDIR)/src -I$(STATSDIR)/src
+
+OBJS         = fcmat_flt.o matrix_flt.o edgestats_flt.o nodedeg_flt.o \
+               fcmat_dbl.o matrix_dbl.o edgestats_dbl.o nodedeg_dbl.o
 
 #-----------------------------------------------------------------------------
 # Build Objects
 #-----------------------------------------------------------------------------
-all: fcmat_flt.o matrix_flt.o edgestats_flt.o nodedeg_flt.o \
-     fcmat_dbl.o matrix_dbl.o edgestats_dbl.o nodedeg_dbl.o
+all: $(OBJS)
 
 fcmat_flt.o:               $(OBJDIR)/fcmat_flt.o
 $(OBJDIR)/fcmat_flt.o:     fcmat.h fcmat1.h fcmat2.h fcmat3.h \
+                             $(CORRDIR)/src/clamp.h \
                              $(CORRDIR)/src/pcc.h \
                              $(CORRDIR)/src/tetracc.h \
                              $(CORRDIR)/src/binarize.h \
                              $(CPUINFODIR)/src/cpuinfo.h \
+                             $(DOTDIR)/src/dot.h \
                              $(STATSDIR)/src/stats.h
 $(OBJDIR)/fcmat_flt.o:     fcmat.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=float -DPAIRSPLIT -DRECTGRID -DSAFETHREAD \
-    -I$(CORRDIR)/src -I$(CPUINFODIR)/src -I$(STATSDIR)/src \
-    -c fcmat.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=float -DPAIRSPLIT -DRECTGRID -DSAFETHREAD \
+    $(INCS) -I$(CORRDIR)/src -c fcmat.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/fcmat.o $(OBJDIR)/fcmat_flt.o
 
 matrix_flt.o:              $(OBJDIR)/matrix_flt.o
 $(OBJDIR)/matrix_flt.o:    matrix.h
 $(OBJDIR)/matrix_flt.o:    matrix.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=float \
-    -c matrix.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=float -c matrix.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/matrix.o $(OBJDIR)/matrix_flt.o
 
 edgestats_flt.o:           $(OBJDIR)/edgestats_flt.o
@@ -57,42 +80,38 @@ $(OBJDIR)/edgestats_flt.o: edgestats.h fcmat.h matrix.h \
                              $(DOTDIR)/src/dot.h \
                              $(STATSDIR)/src/stats.h
 $(OBJDIR)/edgestats_flt.o: edgestats.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=float \
-    -I$(CPUINFODIR)/src -I$(DOTDIR)/src -I$(STATSDIR)/src \
-    -c edgestats.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=float $(INCS) -c edgestats.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/edgestats.o $(OBJDIR)/edgestats_flt.o
 
 nodedeg_flt.o:             $(OBJDIR)/nodedeg_flt.o
 $(OBJDIR)/nodedeg_flt.o:   nodedeg.h fcmat.h \
                              $(CPUINFODIR)/src/cpuinfo.h
 $(OBJDIR)/nodedeg_flt.o:   nodedeg.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=float \
-    -I$(CPUINFODIR)/src \
-    -c nodedeg.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=float -I$(CPUINFODIR)/src -c nodedeg.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/nodedeg.o $(OBJDIR)/nodedeg_flt.o
-
+#-----------------------------------------------------------------------------
 fcmat_dbl.o:               $(OBJDIR)/fcmat_dbl.o
 $(OBJDIR)/fcmat_dbl.o:     fcmat.h fcmat1.h fcmat2.h fcmat3.h \
+                             $(CORRDIR)/src/clamp.h \
                              $(CORRDIR)/src/pcc.h \
                              $(CORRDIR)/src/tetracc.h \
                              $(CORRDIR)/src/binarize.h \
                              $(CPUINFODIR)/src/cpuinfo.h \
+                             $(DOTDIR)/src/dot.h \
                              $(STATSDIR)/src/stats.h
 $(OBJDIR)/fcmat_dbl.o:     fcmat.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=double -DPAIRSPLIT -DRECTGRID -DSAFETHREAD \
-    -I$(CORRDIR)/src -I$(CPUINFODIR)/src -I$(STATSDIR)/src \
-    -c fcmat.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=double -DPAIRSPLIT -DRECTGRID -DSAFETHREAD \
+    $(INCS) -I$(CORRDIR)/src -c fcmat.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/fcmat.o $(OBJDIR)/fcmat_dbl.o
 
 matrix_dbl.o:              $(OBJDIR)/matrix_dbl.o
 $(OBJDIR)/matrix_dbl.o:    matrix.h
 $(OBJDIR)/matrix_dbl.o:    matrix.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=double \
-    -c matrix.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=double -c matrix.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/matrix.o $(OBJDIR)/matrix_dbl.o
 
 edgestats_dbl.o:           $(OBJDIR)/edgestats_dbl.o
@@ -101,18 +120,14 @@ $(OBJDIR)/edgestats_dbl.o: edgestats.h fcmat.h matrix.h \
                              $(DOTDIR)/src/dot.h \
                              $(STATSDIR)/src/stats.h
 $(OBJDIR)/edgestats_dbl.o: edgestats.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=double \
-    -I$(CPUINFODIR)/src -I$(DOTDIR)/src -I$(STATSDIR)/src \
-    -c edgestats.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=double $(INCS) -c edgestats.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/edgestats.o $(OBJDIR)/edgestats_dbl.o
 
 nodedeg_dbl.o:             $(OBJDIR)/nodedeg_dbl.o
 $(OBJDIR)/nodedeg_dbl.o:   nodedeg.h fcmat.h \
                              $(CPUINFODIR)/src/cpuinfo.h
 $(OBJDIR)/nodedeg_dbl.o:   nodedeg.c makefile-mex
-	$(MEXCC) CFLAGS='$(CFLAGS)' COPTIMFLAGS='$(COPTIMFLAGS)' \
-    -DNDEBUG -DREAL=double \
-    -I$(CPUINFODIR)/src \
-    -c nodedeg.c -outdir $(OBJDIR); \
+	$(MEXCC) COPTIMFLAGS='$(CFOPT)' \
+    -DREAL=double -I$(CPUINFODIR)/src -c nodedeg.c -outdir $(OBJDIR); \
   mv $(OBJDIR)/nodedeg.o $(OBJDIR)/nodedeg_dbl.o

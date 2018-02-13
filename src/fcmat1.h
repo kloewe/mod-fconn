@@ -5,8 +5,10 @@
 ----------------------------------------------------------------------------*/
 #ifndef FCMAT1_H
 
+#include "dot.h"
 #include "stats.h"
 #include "pcc.h"
+#include "clamp.h"
 #include "binarize.h"
 #include "tetracc.h"
 #include "fcmat.h"
@@ -84,13 +86,10 @@
 ----------------------------------------------------------------------------*/
 #if   defined __AVX__           /* if AVX instructions available */
 #  define INIT_PCC SFXNAME(init_avx)
-#  define PAIR_PCC SFXNAME(pair_avx)
 #elif defined __SSE2__          /* if SSE2 instructions available */
 #  define INIT_PCC SFXNAME(init_sse2)
-#  define PAIR_PCC SFXNAME(pair_sse2)
 #else                           /* if neither extension available */
 #  define INIT_PCC SFXNAME(init_naive)
-#  define PAIR_PCC SFXNAME(pair_naive)
 #endif                          /* fall back to naive computations */
 
 #if defined __POPCNT__ && defined __SSE4_1__
@@ -113,9 +112,9 @@ inline REAL SFXNAME(fcm_pccotf) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
     return (REAL)+1;            /* always return +1.0 */
   if (row >  col) {             /* ensure col >= row (upper triangle) */
     DIM t = row; row = col; col = t; }
-  return PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
+    return SFXNAME(clamp)(dot((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
                   (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
-                  (int)fcm->T); /* compute Pearson correlation coeff. */
+                  (int)fcm->T), (REAL)-1, (REAL)+1); /* compute Pearson cc. */
 }  /* fcm_pccotf() */
 
 /*--------------------------------------------------------------------------*/
@@ -128,9 +127,9 @@ inline REAL SFXNAME(fcm_pccr2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
     return (REAL)+R2Z_MAX;      /* return atanh(1-epsilon) */
   if (row > col) {              /* ensure col >= row (upper triangle) */
     DIM t = row; row = col; col = t; }
-  REAL r = PAIR_PCC((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
+  REAL r = SFXNAME(clamp)(dot((REAL*)fcm->data +(size_t)row*(size_t)fcm->X,
                     (REAL*)fcm->data +(size_t)col*(size_t)fcm->X,
-                    (int)fcm->T);/* compute Pearson correlation coeff. */
+                    (int)fcm->T), (REAL)-1, (REAL)+1); /* compute Pearson cc. */
   return fr2z(r);                /* apply Fisher's r to z transform */
 }  /* fcm_pccr2z() */
 

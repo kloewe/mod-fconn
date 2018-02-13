@@ -107,9 +107,9 @@ inline REAL SFXNAME(pcc_pure) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 {                               /* --- compute Pearson corr. coeff. */
   assert(fcm                    /* check the function arguments */
   &&    (row >= 0) && (row < fcm->V) && (col > row) && (col < fcm->V));
-  return PAIR_PCC((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
+  return SFXNAME(clamp)(dot((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
                   (REAL*)fcm->data +(size_t)col *(size_t)fcm->X,
-                  (int)fcm->T); /* compute Pearson correlation coeff. */
+                  (int)fcm->T), (REAL)-1, (REAL)+1); /* compute Pearson cc. */
 }  /* pcc_pure() */
 
 /*--------------------------------------------------------------------------*/
@@ -120,9 +120,9 @@ inline REAL SFXNAME(pcc_r2z) (SFXNAME(FCMAT) *fcm, DIM row, DIM col)
 
   assert(fcm                    /* check the function arguments */
   &&    (row >= 0) && (row < fcm->V) && (col > row) && (col < fcm->V));
-  r = PAIR_PCC((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
+  r = SFXNAME(clamp)(dot((REAL*)fcm->data +(size_t)row *(size_t)fcm->X,
                (REAL*)fcm->data +(size_t)col *(size_t)fcm->X,
-               (int)fcm->T);    /* compute Pearson correlation coeff. */
+               (int)fcm->T), (REAL)-1, (REAL)+1); /* compute Pearson cc. */
   return fr2z(r);         /* apply Fisher's r to z transform */
 }  /* pcc_r2z() */
 

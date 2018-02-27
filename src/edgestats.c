@@ -296,7 +296,7 @@ static int fcm_uni_multi(FCMAT **fcm, int n, Func f, const int *an,
 
 /* fcm_uni
  * -------
- * compute statistics across functinal connectomes
+ * compute statistics across functional connectomes
  *
  * mandatory parameters
  * fcm   set of FC matrices
